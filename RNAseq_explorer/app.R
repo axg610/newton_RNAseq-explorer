@@ -1,8 +1,12 @@
 library(shiny)
 library(shinycssloaders)
+library(ComplexHeatmap)
 library(tidyverse)
 
-# Define the UI
+# v2.2 notes: object "gene" no longer exists, now using to "genes" which may be
+# a vector of length 1 for single_gene plots, or a vector of length n for multi_gene
+
+# ==== define ui ====
 
 ui <- fluidPage(
   titlePanel("Newton/Giembycz Lab RNAseq Explorer"),
@@ -17,6 +21,10 @@ ui <- fluidPage(
             "A549 IL1B Bud (transcripts)",
             "A549 Ad-DUSP1 IL1B",
             "A549 Ad-IkBa IL1B Dex"
+          ),
+          "NEW/EXPERIMENTAL" = c(
+            "Basal expression - single gene",
+            "Basal expression - heatmap"
           ),
           "ALI datasets" = c(
             "ALI IL1B Bud",
@@ -37,14 +45,12 @@ ui <- fluidPage(
             "HBE IL1B IFNg Dex",
             "HBE TNF Form",
             "HBE CMV timecourse (Parkins Lab)"
-          ),
-          "Other datasets" = c(
-            "Basal expression - all cells"
           )
         )
       ),
       
-      textInput("gene", "Official gene symbol:", value = "FKBP5"),
+      # textInput("gene", "Official gene symbol:", value = "FKBP5"),
+      uiOutput("gene_input"),
       
       radioButtons(
         "metric",
@@ -56,13 +62,18 @@ ui <- fluidPage(
       actionButton("button", "Generate", icon = icon("redo")),
       
       helpText(HTML("
+      v2.2, February 2025<br/>
+      - Added experimental heatmap option for basal expression data<br/>
+      <br/>
       v2.1, December 2025<br/>
       - Plots now update only when Generate is clicked<br/>
       - Added transcript-level datasets<br/>
       - Added log2fold, tpm, and fold options<br/>
       - Added loading indicator<br/>
       - Datasets cleaned and consolidated (https://tinyurl.com/2ae5ajap)<br/>
-      - Large datasets chunked to avoid OOM crash"))
+      - Large datasets chunked to avoid OOM crash"
+      )
+      )
       
     ),
     mainPanel(
@@ -74,12 +85,23 @@ ui <- fluidPage(
   )
 )
 
-# Server work
+single_gene_ui <- textInput(
+  "gene",
+  "Official gene symbol:",
+  value = "FKBP5"
+)
+
+multi_gene_ui <- textAreaInput(
+  "genes",
+  "Gene list (one per line or comma-separated):",
+  value = "FKBP5\nDUSP1\nNFKBIA",
+  rows = 6
+)
+
+# ==== define server ====
 server <- function(input, output) {
   
-  #========
-  # Setup |
-  #========
+  ## ==== visual elements ====
   
   # MM's colors
   my_cols = c("NS" = "grey10", "IL1B" = "#FC4E07", "Bud" = "#E7B800", "IL1B + Bud" = "#2E9FDF",
@@ -107,7 +129,33 @@ server <- function(input, output) {
           strip.text = element_text(size = 14),
           strip.background = element_rect(fill = "transparent", colour = "transparent", linewidth = 0.5)) 
   
-  # dataset name to file
+  ## ==== registries ====
+  
+  # dataset type registry
+  dataset_meta <- list(
+    "A549 IL1B Bud"                          = "single_gene",
+    "A549 IL1B Bud (transcripts)"            = "single_gene",
+    "HBE IL1B IFNg Dex"                      = "single_gene",
+    "HBE TNF Form"                           = "single_gene",
+    "ALI IL1B Bud"                           = "single_gene",
+    "ALI Bud Form"                           = "single_gene",
+    "ALI Cig IL17A Bud"                      = "single_gene",
+    "ALI CMV"                                = "single_gene",
+    "ALI HRV (Bai 2015)"                     = "single_gene",
+    "BEAS-2B Mom Ind"                        = "single_gene",
+    "A549 Ad-DUSP1 IL1B"                     = "single_gene",
+    "A549 Ad-IkBa IL1B Dex"                  = "single_gene",
+    "BEAS-2B AKO/BKO Form Bud"               = "single_gene",
+    "BEAS-2B AKO/BKO Form Bud (transcripts)" = "single_gene",
+    "BEAS-2B dKO Form"                       = "single_gene",
+    "BEAS-2B dKO Form (transcripts)"         = "single_gene",
+    "BEAS-2B Tap Bay Vil"                    = "single_gene",
+    "HBE CMV timecourse (Parkins Lab)"       = "single_gene",
+    "Basal expression - single gene"         = "single_gene",
+    "Basal expression - heatmap"             = "multi_gene"
+  )
+  
+  # dataset file registry
   dataset_map <- list(
     "A549 IL1B Bud"                          = "data/a549_ib clean.rds",
     "A549 IL1B Bud (transcripts)"            = NULL, # handled via chunks
@@ -119,7 +167,6 @@ server <- function(input, output) {
     "ALI CMV"                                = "data/ali_cmv clean.rds",
     "ALI HRV (Bai 2015)"                     = "data/ali_hrv clean.rds",
     "BEAS-2B Mom Ind"                        = "data/b2b_mi clean.rds",
-    "Basal expression - all cells"           = "data/all_cells clean.rds",
     "A549 Ad-DUSP1 IL1B"                     = "data/dusp clean.rds",
     "A549 Ad-IkBa IL1B Dex"                  = "data/ikba clean.rds",
     "BEAS-2B AKO/BKO Form Bud"               = "data/b2b_pka clean.rds",
@@ -127,7 +174,9 @@ server <- function(input, output) {
     "BEAS-2B dKO Form"                       = "data/b2b_dko clean.rds",
     "BEAS-2B dKO Form (transcripts)"         = NULL, # handled via chunks
     "BEAS-2B Tap Bay Vil"                    = "data/b2b_tap_bay_vil clean.rds",
-    "HBE CMV timecourse (Parkins Lab)"       = "data/hbe_cmv clean.rds"
+    "HBE CMV timecourse (Parkins Lab)"       = "data/hbe_cmv clean.rds",
+    "Basal expression - single gene"         = "data/all_cells clean.rds",
+    "Basal expression - heatmap"             = "data/all_cells clean.rds"
   )
   
   # chunk mappings
@@ -138,6 +187,13 @@ server <- function(input, output) {
     "P-T" = LETTERS[16:20],
     "U-Z" = LETTERS[21:26]
   )
+  
+  ## ==== functions ====
+  
+  # function to pick the correct dataset type
+  dataset_type <- function(dataset) {
+    dataset_meta[[dataset]]
+  }
   
   # function to pick the correct chunk
   get_transcript_chunk <- function(gene, dataset_prefix) {
@@ -161,33 +217,141 @@ server <- function(input, output) {
     readRDS(path)
   }
   
+  # function to parse genes
+  parse_genes <- function(x) {
+    x %>%
+      strsplit("[,\n]") %>%
+      unlist() %>%
+      trimws() %>%
+      toupper() %>%
+      (\(.) .[. != "" & !is.na(.)])()
+  }
   
-  #===================================
-  # Snapshot choices on button click |
-  #===================================
+  # function to build a heatmap (avoids monster if_else tree)
+  
+  render_heatmap <- function(dat, metric) {
+    
+    mat <- dat %>% 
+      select("Gene", "sample", metric) %>%
+      mutate(Gene = factor(Gene, levels = unique(state()$genes))) %>%
+      arrange(Gene) %>%
+      pivot_wider(names_from = "sample", values_from = metric) %>%
+      column_to_rownames("Gene") %>%
+      as.matrix()
+    
+    colsplit = factor(
+      c(
+        rep("A549", 4),
+        rep("ALI", 5),
+        rep("B2B", 4),
+        rep("Brushings", 3),
+        rep("HBE", 5)
+      ),
+      levels = c("A549", "ALI", "B2B", "Brushings", "HBE")
+    )
+    
+    vals <- as.numeric(mat)
+    vals <- vals[is.finite(vals)]
+    
+    lo  <- quantile(vals, 0.02)
+    hi  <- quantile(vals, 0.98)
+    mid <- median(vals)
+    
+    if (lo < 0 && hi > 0) {
+      # diverging
+      max_abs <- max(abs(c(lo, hi)))
+      
+      col_fun <- circlize::colorRamp2(
+        c(-max_abs, -0.25 * max_abs, 0,
+          0.25 * max_abs,  max_abs),
+        c("steelblue4",
+          "steelblue2",
+          "white",
+          "firebrick2",
+          "firebrick4")
+      )
+      
+    } else if (hi <= 0) {
+      # all negative
+      col_fun <- circlize::colorRamp2(
+        c(lo, mid, hi),
+        c("steelblue4", "steelblue2", "white")
+      )
+      
+    } else {
+      # all positive
+      col_fun <- circlize::colorRamp2(
+        c(lo, mid, hi),
+        c("white", "firebrick2", "firebrick4")
+      )
+    }
+    
+    hm <- Heatmap(mat,
+                  cluster_rows = F, 
+                  cluster_columns = F,
+                  column_split = colsplit,
+                  rect_gp = grid::gpar(col = "black", lwd = 0.5),
+                  show_row_names = TRUE,
+                  show_column_names = FALSE,
+                  row_names_side = "left",
+                  column_title_rot = 45,
+                  width  = grid::unit(0.75 * ncol(mat), "cm"),
+                  height = grid::unit(0.75 * nrow(mat), "cm"),
+                  name = metric,
+                  col = col_fun
+    )
+    
+    draw(hm)
+      
+  }
+  
+  ## ==== snapshot choices and define state ====
+  
+  # state <- eventReactive(input$button, {
+  #   list(
+  #     dataset = input$dataset,
+  #     gene    = toupper(input$gene),
+  #     metric  = input$metric
+  #   )
+  # })
   
   state <- eventReactive(input$button, {
+    type <- dataset_type(input$dataset)
+    
+    genes <- if (type == "multi_gene") {
+      parse_genes(input$genes)
+    } else {
+      toupper(input$gene)
+    }
+    
     list(
       dataset = input$dataset,
-      gene    = toupper(input$gene),
-      metric  = input$metric
+      genes   = genes,
+      metric  = input$metric,
+      type    = type
     )
   })
   
-  #============
-  # Load data |
-  #============
+  ## ==== input ui loader ====
   
-  # x <- reactive({
-  #   req(state())
-  #   
-  #   readRDS(dataset_map[[state()$dataset]]) %>%
-  #     filter(Gene == state()$gene)
-  # })
+  output$gene_input <- renderUI({
+    req(input$dataset)
+    
+    if (dataset_type(input$dataset) == "multi_gene") {
+      multi_gene_ui
+    } else {
+      single_gene_ui
+    }
+  })
+  
+  ## ==== data loader ====
   
   x <- reactive({
+    
     req(state())
-    gene <- toupper(state()$gene)
+    
+    # gene <- toupper(state()$gene)
+    genes <- state()$genes
     dataset <- state()$dataset
     
     # Check if dataset is transcript-level and needs chunked loading
@@ -202,6 +366,7 @@ server <- function(input, output) {
                        "BEAS-2B dKO Form (transcripts)"         = "data/b2b_dko_transcripts clean")
       
       # Load correct chunk
+      gene <- genes[[1]]
       dat <- get_transcript_chunk(gene, prefix)
     } 
     
@@ -213,7 +378,8 @@ server <- function(input, output) {
     }
     
     # Filter for the selected gene
-    dat %>% filter(Gene == gene)
+    # dat %>% filter(Gene == gene)
+    dat %>% filter(Gene %in% genes)
   })
   
   y_label <- reactive({
@@ -225,11 +391,19 @@ server <- function(input, output) {
            state()$metric)  # fallback
   })
   
-  #================
-  # Generate plot |
-  #================
+  ## ==== plot and table loader ====
   
   output$expression_plot <- renderPlot({
+    
+    req(state(), x())
+    
+    # defer to a heatmap function if a multi-gene option is picked
+    if (state()$type == "multi_gene") {
+      req(length(state()$genes) > 0)
+      return(render_heatmap(x(), metric = state()$metric))
+    }
+    
+    # otherwise use MM's monster tree
     if (state()$dataset == "A549 IL1B Bud") {
       x() %>% 
         ggplot(aes(time, .data[[state()$metric]], group = treatment, color = treatment)) +
@@ -253,7 +427,7 @@ server <- function(input, output) {
         scale_y_continuous(breaks = scales::breaks_pretty(min.n=4), expand = expansion(add = 0.5)) + 
         #expand_limits(y = c(0)) +
         facet_wrap(~transcript, ncol = 2)+
-        labs(y = y_label(), x = "time (h)", color = "Treatment", title = state()$gene) + 
+        labs(y = y_label(), x = "time (h)", color = "Treatment", title = paste(state()$genes, collapse = ", ")) + 
         my_theme + theme(aspect.ratio = 1, legend.position = "top")
     } 
     else if (state()$dataset == "BEAS-2B Mom Ind") {
@@ -268,20 +442,6 @@ server <- function(input, output) {
         facet_wrap(~Gene)+
         labs(y = y_label(), x = "time (h)", color = "Treatment") + 
         my_theme + theme(aspect.ratio = 1)
-    }
-    
-    else if (state()$dataset == "Basal expression - all cells") {
-      x() %>% 
-        ggplot(aes(cells, .data[[state()$metric]]))+
-        geom_boxplot(coef = 3, outlier.size = 0, linewidth = 0.5)  + 
-        scale_y_continuous(breaks = scales::breaks_pretty(min.n=4), expand = expansion(add = 0.5)) + 
-        labs(y = y_label(), x = NULL) + 
-        expand_limits(y = 0) +
-        facet_wrap(~Gene)+
-        my_theme + 
-        theme(aspect.ratio = 0.8 , 
-              legend.position="none", 
-              axis.text.x = element_text(angle = 45, hjust = 1))
     }
     else if (state()$dataset == "HBE IL1B IFNg Dex") {
       x() %>% 
@@ -404,7 +564,7 @@ server <- function(input, output) {
         facet_grid(transcript~treatment) +
         geom_boxplot(coef = 3, outlier.size = 0, linewidth = 0.5) +
         geom_point() +
-        labs(y = y_label(), x = NULL, fill = "Condition") +
+        labs(y = y_label(), x = NULL, fill = "Condition", title = paste(state()$genes, collapse = ", ")) +
         scale_fill_manual(values = my_cols) +
         my_theme + 
         theme(axis.text.x = element_blank(), 
@@ -428,7 +588,7 @@ server <- function(input, output) {
         facet_grid(transcript~treatment) +
         geom_boxplot(coef = 3, outlier.size = 0, linewidth = 0.5) +
         geom_point() +
-        labs(y = y_label(), x = NULL, fill = "Condition") +
+        labs(y = y_label(), x = NULL, fill = "Condition", title = paste(state()$genes, collapse = ", ")) +
         scale_fill_manual(values = my_cols) +
         my_theme +
         theme(axis.text.x = element_blank(), 
@@ -459,6 +619,19 @@ server <- function(input, output) {
         scale_color_manual(values = my_cols, labels = c("CON" = "control", "CMV" = "CMV")) +
         my_theme + theme(aspect.ratio = 1)
     } 
+    else if (state()$dataset == "Basal expression - single gene") {
+      x() %>% 
+        ggplot(aes(cells, .data[[state()$metric]]))+
+        geom_boxplot(coef = 3, outlier.size = 0, linewidth = 0.5)  + 
+        scale_y_continuous(breaks = scales::breaks_pretty(min.n=4), expand = expansion(add = 0.5)) + 
+        labs(y = y_label(), x = NULL) + 
+        expand_limits(y = 0) +
+        facet_wrap(~Gene)+
+        my_theme + 
+        theme(aspect.ratio = 0.8 , 
+              legend.position="none", 
+              axis.text.x = element_text(angle = 45, hjust = 1))
+    }
     else {output$text = renderPrint("select a valid dataset")} 
   }, 
   
@@ -470,7 +643,13 @@ server <- function(input, output) {
     if ("transcript" %in% colnames(dat)) {
       n <- dplyr::n_distinct(dat$transcript)
       max(800, n * 180)
-    } else {
+    } 
+    
+    else if (length(unique(dat$Gene)) > 1){
+      800
+    }
+    
+    else {
       400
     }
   }
@@ -478,7 +657,29 @@ server <- function(input, output) {
   
   output$table <- renderTable({x()})
   
-}
 
-# Create Shiny app
+  }
+
+# ==== create shiny app ====
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
