@@ -639,6 +639,7 @@ server <- function(input, output) {
     else if (state()$dataset == "BEAS-2B RNO ONO Vil (GSE267218)") {
       x() %>%
         ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
+        facet_wrap(~Gene) +
         geom_boxplot(outliers = F) +
         geom_point() +
         my_theme +
