@@ -3,9 +3,6 @@ library(shinycssloaders)
 library(ComplexHeatmap)
 library(tidyverse)
 
-# v2.2 notes: object "gene" no longer exists, now using to "genes" which may be
-# a vector of length 1 for single_gene plots, or a vector of length n for multi_gene
-
 # ==== define ui ====
 
 ui <- fluidPage(
@@ -39,7 +36,8 @@ ui <- fluidPage(
             "BEAS-2B dKO Form",
             "BEAS-2B dKO Form (transcripts)",
             "BEAS-2B Mom Ind",
-            "BEAS-2B Tap Bay Vil"
+            "BEAS-2B Tap Bay Vil",
+            "BEAS-2B RNO ONO Vil (GSE267218)"
           ),
           "HBE datasets" = c(
             "HBE IL1B IFNg Dex",
@@ -78,7 +76,11 @@ ui <- fluidPage(
     ),
     mainPanel(
       tabsetPanel(type = "tabs", 
-                  tabPanel("Plot", plotOutput("expression_plot") %>% withSpinner(type = 6, color = "#555555", caption = "Working...")), 
+                  tabPanel("Plot", plotOutput("expression_plot") %>% 
+                             withSpinner(
+                               type = 6, 
+                               color = "#555555", 
+                               caption = "Working...")), 
                   tabPanel("Table", tableOutput("table"))
       )
     )
@@ -152,7 +154,8 @@ server <- function(input, output) {
     "BEAS-2B Tap Bay Vil"                    = "single_gene",
     "HBE CMV timecourse (Parkins Lab)"       = "single_gene",
     "Basal expression - single gene"         = "single_gene",
-    "Basal expression - heatmap"             = "multi_gene"
+    "Basal expression - heatmap"             = "multi_gene",
+    "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene"
   )
   
   # dataset file registry
@@ -176,7 +179,8 @@ server <- function(input, output) {
     "BEAS-2B Tap Bay Vil"                    = "data/b2b_tap_bay_vil clean.rds",
     "HBE CMV timecourse (Parkins Lab)"       = "data/hbe_cmv clean.rds",
     "Basal expression - single gene"         = "data/all_cells clean.rds",
-    "Basal expression - heatmap"             = "data/all_cells clean.rds"
+    "Basal expression - heatmap"             = "data/all_cells clean.rds",
+    "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds"
   )
   
   # chunk mappings
@@ -632,6 +636,18 @@ server <- function(input, output) {
               legend.position="none", 
               axis.text.x = element_text(angle = 45, hjust = 1))
     }
+    else if (state()$dataset == "BEAS-2B RNO ONO Vil (GSE267218)") {
+      x() %>%
+        ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
+        geom_boxplot(outliers = F) +
+        geom_point() +
+        my_theme +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              aspect.ratio = 0.5) +
+        labs(x = NULL)
+    }
+    
+    
     else {output$text = renderPrint("select a valid dataset")} 
   }, 
   

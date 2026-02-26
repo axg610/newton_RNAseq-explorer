@@ -285,12 +285,12 @@ b2b_rno_ono_vil <- read_csv("raw tables/b2b_rno_ono_vil.txt") %>%
     ttt == "J" ~ "vil (100 nM) + RNO"
   )) %>%
   quickfactor(treatment) %>%
+  group_by(rep) %>%
+  mutate(log2_tpm = log2(tpm),
+         fold = tpm / (tpm[treatment == "vehicle"] + 0.01),
+         log2_fold = log2_tpm - log2_tpm[treatment == "vehicle"]) %>%
+  ungroup() %>%
+  select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("b2b_rno_ono_vil clean")
-
-ggplot(b2b_rno_ono_vil %>% filter(Gene == "A1BG"),
-       aes(x = treatment, y = tpm)) +
-  geom_boxplot(outliers = F) +
-  geom_point() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
