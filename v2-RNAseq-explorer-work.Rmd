@@ -28,7 +28,7 @@ ranges <- list(
 ```
 
 
-```{r table cleaning}
+```{r complete table cleaning}
 # a549_ib
 a549_ib <- read_tsv("raw tables/a549_ib.txt") %>%
   mutate(tpm = (2^log2_tpm) - 0.01) %>%
@@ -262,4 +262,35 @@ hbe_cmv <- read_tsv("raw tables/hbe_cmv.txt") %>%
   saveTables("hbe_cmv clean")
 ```
 
+
+
+```{r in progress}
+b2b_rno_ono_vil <- read_csv("raw tables/b2b_rno_ono_vil.txt") %>%
+  rename(Gene = HGNC) %>%
+  pivot_longer(cols = -Gene, values_to = "tpm", names_to = "sample") %>%
+  mutate(
+    ttt = gsub("[1-9]", "", sample),
+    rep = gsub("[A-Z]", "", sample)
+    ) %>%
+  mutate(treatment = case_when(
+    ttt == "A" ~ "vehicle",
+    ttt == "B" ~ "RNO",
+    ttt == "C" ~ "ONO (0.1 nM)",
+    ttt == "D" ~ "ONO (0.1 nM) + RNO",
+    ttt == "E" ~ "ONO (1 nM)",
+    ttt == "F" ~ "ONO (1 nM) + RNO",
+    ttt == "G" ~ "ONO (1 μM)",
+    ttt == "H" ~ "ONO (1 μM) + RNO",
+    ttt == "I" ~ "vil (100 nM)",
+    ttt == "J" ~ "vil (100 nM) + RNO"
+  )) %>%
+  quickfactor(treatment) %>%
+  saveTables("b2b_rno_ono_vil clean")
+
+ggplot(b2b_rno_ono_vil %>% filter(Gene == "A1BG"),
+       aes(x = treatment, y = tpm)) +
+  geom_boxplot(outliers = F) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
