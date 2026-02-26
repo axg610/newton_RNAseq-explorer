@@ -2,3 +2,9 @@
 .Rhistory
 .rds
 .txt
+
+RNAseq_explorer/data/
+RNAseq_explorer/rsconnect/
+clean tables/
+raw tables/
+v1/
