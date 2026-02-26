@@ -1,0 +1,265 @@
+```{r setup, include=F}
+library(tidyverse)
+```
+
+```{r helper functions}
+# pipe-friendly saver
+saveTables <- function(table, name){
+  tsvName = paste0(name, ".txt")
+  rdsName = paste0(name, ".rds")
+  write_tsv(table, paste0("clean tables/", tsvName))
+  saveRDS(table, paste0("clean tables/", rdsName))
+  return(table)
+}
+
+# quickly factor a bunch of columns
+quickfactor <- function(df, ...) {
+  df %>% dplyr::mutate(across(c(...), ~ factor(.x, levels = unique(.x))))
+}
+
+# alphabetical ranges for chunking
+ranges <- list(
+  "A-E" = LETTERS[1:5],
+  "F-J" = LETTERS[6:10],
+  "K-O" = LETTERS[11:15],
+  "P-T" = LETTERS[16:20],
+  "U-Z" = LETTERS[21:26]
+)
+```
+
+
+```{r table cleaning}
+# a549_ib
+a549_ib <- read_tsv("raw tables/a549_ib.txt") %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, rep, time) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  quickfactor(treatment, time) %>%
+  select(Gene, rep, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("a549_ib clean")
+
+# a549_ib_transcripts (write a full tsv but chunk down the rds files)
+a549_transcripts <- read_tsv("raw tables/a549_ib_transcripts.txt") %>%
+  mutate(log2_tpm = log2(tpm + 0.01)) %>%
+  group_by(transcript, rep, time) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  quickfactor(treatment, time) %>%
+  select(Gene, transcript, rep, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  write_tsv("clean tables/a549_ib_transcripts clean.txt")
+
+for (chunk_name in names(ranges)) {
+  letters_range <- ranges[[chunk_name]]
+  chunk_df <- a549_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
+  saveRDS(chunk_df, paste0("clean tables/a549_ib_transcripts clean ", chunk_name, ".rds"))
+}
+
+# ali_bf
+ali_bf <- read_tsv("raw tables/ali_bf.txt") %>%
+  quickfactor(treatment, time) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, patient, time) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, patient, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ali_bf clean")
+
+# ali_cig
+ali_cig <- read_tsv("raw tables/ali_cig.txt") %>%
+  quickfactor(treatment, condition, cond) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, donor, condition) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, donor, treatment, condition, cond, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ali_cig clean")
+
+# ali_cmv
+ali_cmv <- read_tsv("raw tables/ali_cmv.txt") %>%
+  quickfactor(condition) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, donor) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[condition == "Control"],
+         fold = tpm / (tpm[condition == "Control"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, donor, condition, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ali_cmv clean")
+
+# ali_hrv
+ali_hrv <- read_tsv("raw tables/ali_hrv.txt") %>%
+  mutate(disease_state = factor(disease_state, levels = c("non-asthmatic", "asthmatic")),
+         condition = factor(condition, levels = c("Vehicle", "HRV16"))) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, disease_state) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[condition == "Vehicle"],
+         fold = tpm / (tpm[condition == "Vehicle"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, disease_state, condition, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ali_hrv clean")
+
+# ali_ib
+ali_ib <- read_tsv("raw tables/ali_ib.txt") %>%
+  quickfactor(treatment) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  group_by(Gene, set) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, set, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ali_ib clean")
+
+# all_cells
+all_cells <- read_tsv("raw tables/all_cells.txt") %>%
+  quickfactor(cells) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01) %>%
+  mutate(fold = NA, log2_fold = NA) %>%
+  select(Gene, sample, cells, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("all_cells clean")
+
+# b2b_mi
+b2b_mi <- read_tsv("raw tables/b2b_mi.txt") %>%
+  quickfactor(treatment, time) %>%
+  group_by(Gene, rep, treatment, time) %>%
+  summarize(log2_tpm = mean(log2_tpm), .groups = "keep") %>%
+  ungroup() %>%
+  mutate(tpm = (2^log2_tpm) + 0.01) %>%
+  group_by(Gene, rep, time) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = tpm / (tpm[treatment == "NS"] + 0.01)) %>%
+  ungroup() %>%
+  select(Gene, rep, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("b2b_mi clean")
+
+# b2b_pka
+b2b_pka <- read_tsv("raw tables/b2b_pka.txt") %>%
+  rename(Gene = gene,
+         rep = sample,
+         log2_tpm = tpm,
+         log2_fold = fold) %>%
+  quickfactor(condition, treatment) %>%
+  select(-scaled_reads_per_base) %>%
+  mutate(tpm = (2^log2_tpm) - 0.5,
+         fold = 2^log2_fold) %>%
+  select(Gene, rep, condition, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("b2b_pka clean")
+
+# b2b_pka_transcripts (write full txt file but chunk down rds file)
+b2b_pka_transcripts <- read_tsv("raw tables/b2b_pka_transcripts.txt") %>%
+  select(Gene, transcript, rep, condition, treatment, tpm) %>%
+  quickfactor(condition, treatment) %>%
+  mutate(log2_tpm = log2(tpm + 0.5)) %>%
+  group_by(transcript, rep, condition) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = 2^log2_fold) %>%
+  ungroup() %>%
+  select(Gene, transcript, rep, condition, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  mutate(condition = if_else(condition == "B2B-WT", "WT", condition)) %>%
+  write_tsv("clean tables/b2b_pka_transcripts clean.txt")
+
+for (chunk_name in names(ranges)) {
+  letters_range <- ranges[[chunk_name]]
+  chunk_df <- b2b_pka_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
+  saveRDS(chunk_df, paste0("clean tables/b2b_pka_transcripts clean ", chunk_name, ".rds"))
+}
+
+# b2b_dko
+b2b_dko <- read_tsv("raw tables/b2b_dko.txt") %>%
+  select(Gene, rep, condition, treatment, tpm) %>%
+  quickfactor(condition, treatment) %>%
+  mutate(log2_tpm = log2(tpm + 0.5)) %>%
+  group_by(Gene, rep, condition) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = 2^log2_fold) %>%
+  ungroup() %>%
+  select(Gene, rep, condition, treatment, tpm, log2_tpm, fold, log2_fold) %>%
+  saveTables("b2b_dko clean")
+
+# b2b_dko_transcripts
+b2b_dko_transcripts <- read_tsv("raw tables/b2b_dko_transcripts.txt") %>%
+  select(Gene, transcript, rep, condition, treatment, tpm) %>%
+  quickfactor(condition, treatment) %>%
+  mutate(log2_tpm = log2(tpm + 0.5)) %>%
+  group_by(transcript, rep, condition) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"],
+         fold = 2^log2_fold) %>%
+  ungroup() %>%
+  select(Gene, transcript, rep, condition, treatment, tpm, log2_tpm, fold, log2_fold) %>%
+  write_tsv("clean tables/b2b_dko_transcripts clean.txt")
+
+for (chunk_name in names(ranges)) {
+  letters_range <- ranges[[chunk_name]]
+  chunk_df <- b2b_dko_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
+  saveRDS(chunk_df, paste0("clean tables/b2b_dko_transcripts clean ", chunk_name, ".rds"))
+}
+
+# b2b_tap_bay_vil
+b2b_tap_bay_vil <- read_tsv("raw tables/b2b_tap_bay_vil.txt") %>%
+  rename(Gene = gene,
+         log2_tpm = tpm,
+         log2_fold = fold) %>%
+  quickfactor(treatment) %>%
+  mutate(tpm = (2^log2_tpm) - 0.5,
+         fold = 2^log2_fold) %>%
+  select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("b2b_tap_bay_vil clean")
+
+# dusp
+dusp <- read_tsv("raw tables/dusp.txt") %>%
+  rename(rep = set) %>%
+  quickfactor(condition, treatment, time) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01,
+         fold = 2^log2_fold) %>%
+  select(Gene, rep, condition, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("dusp clean")
+
+# hbe_iid
+hbe_iid <- read_tsv("raw tables/hbe_iid.txt") %>%
+  rename(rep = set) %>%
+  quickfactor(treatment, ttt, ifn) %>%
+  mutate(time = factor(time, levels = c("2", "6", "24"))) %>%
+  group_by(Gene, rep, time, ifn) %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[ttt == "NS"]) %>%
+  ungroup() %>%
+  mutate(tpm = (2^log2_tpm) - 0.01,
+         fold = 2^log2_fold) %>%
+  select(Gene, rep, treatment, ttt, ifn, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("hbe_iid clean")
+
+# hbe_tf
+hbe_tf <- read_tsv("raw tables/hbe_tf.txt") %>%
+  quickfactor(treatment, time) %>%
+  group_by(Gene, patient, time)  %>%
+  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"]) %>%
+  ungroup() %>%
+  mutate(tpm = (2^log2_tpm) - 0.01,
+         fold = 2^log2_fold) %>%
+  select(Gene, patient, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("hbe_tf clean")
+
+# ikba
+ikba <- read_tsv("raw tables/ikba.txt") %>%
+  rename(rep = set) %>%
+  quickfactor(condition, treatment) %>%
+  mutate(tpm = (2^log2_tpm) - 0.01,
+         fold = 2^log2_fold) %>%
+  select(Gene, rep, condition, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("ikba clean")
+
+# hbe_cmv
+hbe_cmv <- read_tsv("raw tables/hbe_cmv.txt") %>%
+  mutate(condition = factor(condition, levels = c("CON", "CMV")),
+         time = factor(time, levels = c(24, 72, 168))) %>%
+  mutate(log2_tpm = tpm,
+         log2_fold = fold,
+         tpm = 2^log2_tpm - 0.1,
+         fold = 2^log2_fold) %>%
+  select(Gene, donor, condition, time, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("hbe_cmv clean")
+```
+
+
