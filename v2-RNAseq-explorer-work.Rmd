@@ -292,5 +292,33 @@ b2b_rno_ono_vil <- read_csv("raw tables/b2b_rno_ono_vil.txt") %>%
   ungroup() %>%
   select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("b2b_rno_ono_vil clean")
+
+
+b2b_rno_salm <- read_tsv("raw tables/b2b_rno_salm.txt") %>%
+  select(-row) %>%
+  rename(Gene = HGNC) %>%
+  pivot_longer(cols = -Gene, values_to = "tpm", names_to = "sample") %>%
+  mutate(
+    sample = gsub("3_", "", sample),
+    ttt = gsub("[1-9]", "", sample),
+    rep = gsub("[A-Z]", "", sample)
+    ) %>%
+  mutate(treatment = case_when(
+    ttt == "A" ~ "vehicle",
+    ttt == "B" ~ "RNO",
+    ttt == "C" ~ "salm (100 nM)",
+    ttt == "D" ~ "salm (0.5 nM)",
+    ttt == "E" ~ "salm (0.5 nM) + RNO",
+    ttt == "F" ~ "salm (0.3 nM)",
+    ttt == "G" ~ "salm (0.3 nM) + RNO"
+  )) %>%
+  quickfactor(treatment) %>%
+  group_by(rep) %>%
+  mutate(log2_tpm = log2(tpm),
+         fold = tpm / (tpm[treatment == "vehicle"] + 0.01),
+         log2_fold = log2_tpm - log2_tpm[treatment == "vehicle"]) %>%
+  ungroup() %>%
+  select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
+  saveTables("b2b_rno_salm clean")
 ```
 

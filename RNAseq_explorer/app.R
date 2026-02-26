@@ -37,7 +37,8 @@ ui <- fluidPage(
             "BEAS-2B dKO Form (transcripts)",
             "BEAS-2B Mom Ind",
             "BEAS-2B Tap Bay Vil",
-            "BEAS-2B RNO ONO Vil (GSE267218)"
+            "BEAS-2B RNO ONO Vil (GSE267218)",
+            "BEAS-2B RNO Salm (GSE126981)"
           ),
           "HBE datasets" = c(
             "HBE IL1B IFNg Dex",
@@ -155,7 +156,8 @@ server <- function(input, output) {
     "HBE CMV timecourse (Parkins Lab)"       = "single_gene",
     "Basal expression - single gene"         = "single_gene",
     "Basal expression - heatmap"             = "multi_gene",
-    "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene"
+    "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene",
+    "BEAS-2B RNO Salm (GSE126981)"           = "single_gene"
   )
   
   # dataset file registry
@@ -180,7 +182,8 @@ server <- function(input, output) {
     "HBE CMV timecourse (Parkins Lab)"       = "data/hbe_cmv clean.rds",
     "Basal expression - single gene"         = "data/all_cells clean.rds",
     "Basal expression - heatmap"             = "data/all_cells clean.rds",
-    "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds"
+    "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds",
+    "BEAS-2B RNO Salm (GSE126981)"           = "data/b2b_rno_salm clean.rds"
   )
   
   # chunk mappings
@@ -636,16 +639,19 @@ server <- function(input, output) {
               legend.position="none", 
               axis.text.x = element_text(angle = 45, hjust = 1))
     }
-    else if (state()$dataset == "BEAS-2B RNO ONO Vil (GSE267218)") {
+    else if (state()$dataset %in% c(
+      "BEAS-2B RNO ONO Vil (GSE267218)",
+      "BEAS-2B RNO Salm (GSE126981)" 
+      )) {
       x() %>%
         ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
         facet_wrap(~Gene) +
         geom_boxplot(outliers = F) +
         geom_point() +
         my_theme +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        theme(axis.text.x = element_text(angle = 315, hjust = 0),
               aspect.ratio = 0.5) +
-        labs(x = NULL)
+        labs(x = NULL, y = y_label())
     }
     
     
