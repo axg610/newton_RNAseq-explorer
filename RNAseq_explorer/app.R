@@ -61,7 +61,10 @@ ui <- fluidPage(
       actionButton("button", "Generate", icon = icon("redo")),
       
       helpText(HTML("
-      v2.2, February 2025<br/>
+      v2.3, February 25 2025<br/>
+      - Added GSE267218 and GSE126981 (Radhika's data) <br/>
+      <br/>
+      v2.2, February 7 2025<br/>
       - Added experimental heatmap option for basal expression data<br/>
       <br/>
       v2.1, December 2025<br/>
