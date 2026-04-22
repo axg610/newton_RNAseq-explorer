@@ -19,10 +19,6 @@ ui <- fluidPage(
             "A549 Ad-DUSP1 IL1B",
             "A549 Ad-IkBa IL1B Dex"
           ),
-          "NEW/EXPERIMENTAL" = c(
-            "Basal expression - single gene",
-            "Basal expression - heatmap"
-          ),
           "ALI datasets" = c(
             "ALI IL1B Bud",
             "ALI Bud Form",
@@ -44,6 +40,10 @@ ui <- fluidPage(
             "HBE IL1B IFNg Dex",
             "HBE TNF Form",
             "HBE CMV timecourse (Parkins Lab)"
+          ),
+          "Datasets with 2+ celltypes" = c(
+            "Basal expression - single gene",
+            "Basal expression - heatmap"
           )
         )
       ),
@@ -60,21 +60,32 @@ ui <- fluidPage(
       
       actionButton("button", "Generate", icon = icon("redo")),
       
-      helpText(HTML("
-      v2.3, February 25 2025<br/>
-      - Added GSE267218 and GSE126981 (Radhika's data) <br/>
-      <br/>
-      v2.2, February 7 2025<br/>
-      - Added experimental heatmap option for basal expression data<br/>
-      <br/>
-      v2.1, December 2025<br/>
-      - Plots now update only when Generate is clicked<br/>
-      - Added transcript-level datasets<br/>
-      - Added log2fold, tpm, and fold options<br/>
-      - Added loading indicator<br/>
-      - Datasets cleaned and consolidated (https://tinyurl.com/2ae5ajap)<br/>
-      - Large datasets chunked to avoid OOM crash"
-      )
+      helpText(
+        HTML(
+          '<a href="https://drive.google.com/drive/folders/1iumRvf95fkqg2FvuGiZunExZcJpQr5lN?usp=sharing" target="_blank"><b>Data repo here</b></a><br/>
+     <a href="https://github.com/axg610/newton_RNAseq-explorer" target="_blank"><b>Code repo here</b></a>'
+        )
+      ),
+      
+      helpText(
+        HTML("
+      <b> CHANGELOG </b> <br/>
+      v2.2b, April 21 2026 <br/>
+        - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
+        - Set unpublished data to private <br/>
+      v2.2a, February 25 2026 <br/>
+        - Added Radhika's data (GSE267218 and GSE126981) <br/>
+      v2.2, February 7 2026 <br/>
+        - Added experimental heatmap option for basal expression data <br/>
+      v2.1, December 2025 <br/>
+        - Plots now update only when Generate is clicked <br/>
+        - Added transcript-level datasets <br/>
+        - Added log2fold, tpm, and fold options<br/>
+        - Added loading indicator <br/>
+        - Datasets cleaned and consolidated <br/>
+        - Large datasets chunked to avoid OOM crash
+      "
+        )
       )
       
     ),
@@ -110,15 +121,24 @@ server <- function(input, output) {
   ## ==== visual elements ====
   
   # MM's colors
-  my_cols = c("NS" = "grey10", "IL1B" = "#FC4E07", "Bud" = "#E7B800", "IL1B + Bud" = "#2E9FDF",
-              "IL17A" = "#FC4E07", "IL17A + Bud" = "#2E9FDF",
-              "TNF" = "#FC4E07", "Dex" = "#E7B800", "IL1B + Dex" = "#2E9FDF",
-              "Indacaterol" = "#CC79A7", "Mometazone" = "#E7B800", "Mometazone + Indacaterol" = "#0072B2",
-              "Form" = "#CC79A7", "TNF + Form" = "#0072B2", "Fsk" = "grey50", "Bud + Form" = "#0072B2",
-              "naive" = "grey10", "Ad-GFP" = "#2E9FDF", "Ad-DUSP1" = "firebrick", "Ad-IkBa" = "firebrick", 
-              "Control" = "#0072B2", "CMV" = "firebrick", "Vehicle" = "#0072B2", "HRV16" = "firebrick",
-              "WT" = "grey50", "AKO" = "firebrick1", "BKO" = "steelblue1", "DKO" = "#CC79A7",
-              "Tap" = "firebrick", "Bay" = "#2E9FDF", "Vil" = "#E7B800")
+  my_cols = c(
+    "NS" = "grey10", "IL1B" = "#FC4E07", 
+    "Bud" = "#E7B800", "IL1B + Bud" = "#2E9FDF",
+    "IL17A" = "#FC4E07", "IL17A + Bud" = "#2E9FDF",
+    "TNF" = "#FC4E07", "Dex" = "#E7B800", "IL1B + Dex" = "#2E9FDF",
+    "Indacaterol" = "#CC79A7", "Mometazone" = "#E7B800", 
+    "Mometazone + Indacaterol" = "#0072B2",
+    "Form" = "#CC79A7", "TNF + Form" = "#0072B2", 
+    "Fsk" = "grey50", "Bud + Form" = "#0072B2",
+    "naive" = "grey10", "Ad-GFP" = "#2E9FDF", 
+    "Ad-DUSP1" = "firebrick", "Ad-IkBa" = "firebrick", 
+    "Control" = "#0072B2", "CMV" = "firebrick", 
+    "Vehicle" = "#0072B2", "HRV16" = "firebrick",
+    "WT" = "grey50", "AKO" = "firebrick1", 
+    "BKO" = "steelblue1", "DKO" = "#CC79A7",
+    "Tap" = "firebrick", "Bay" = "#2E9FDF", 
+    "Vil" = "#E7B800"
+  )
   
   # MM's theme
   my_theme = theme_bw(base_size = 12) + 
@@ -237,7 +257,7 @@ server <- function(input, output) {
       (\(.) .[. != "" & !is.na(.)])()
   }
   
-  # function to build a heatmap (avoids monster if_else tree)
+  # function to build basal cell types heatmap (avoids monster if_else tree)
   
   render_heatmap <- function(dat, metric) {
     

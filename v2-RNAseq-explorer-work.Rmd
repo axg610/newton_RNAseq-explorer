@@ -27,8 +27,7 @@ ranges <- list(
 )
 ```
 
-
-```{r complete table cleaning}
+```{r a549_ib with chunking}
 # a549_ib
 a549_ib <- read_tsv("raw tables/a549_ib.txt") %>%
   mutate(tpm = (2^log2_tpm) - 0.01) %>%
@@ -56,7 +55,9 @@ for (chunk_name in names(ranges)) {
   chunk_df <- a549_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
   saveRDS(chunk_df, paste0("clean tables/a549_ib_transcripts clean ", chunk_name, ".rds"))
 }
+```
 
+```{r ali_bf}
 # ali_bf
 ali_bf <- read_tsv("raw tables/ali_bf.txt") %>%
   quickfactor(treatment, time) %>%
@@ -67,7 +68,9 @@ ali_bf <- read_tsv("raw tables/ali_bf.txt") %>%
   ungroup() %>%
   select(Gene, patient, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ali_bf clean")
+```
 
+```{r ali_cig}
 # ali_cig
 ali_cig <- read_tsv("raw tables/ali_cig.txt") %>%
   quickfactor(treatment, condition, cond) %>%
@@ -78,7 +81,9 @@ ali_cig <- read_tsv("raw tables/ali_cig.txt") %>%
   ungroup() %>%
   select(Gene, donor, treatment, condition, cond, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ali_cig clean")
+```
 
+```{r ali_cmv}
 # ali_cmv
 ali_cmv <- read_tsv("raw tables/ali_cmv.txt") %>%
   quickfactor(condition) %>%
@@ -89,7 +94,9 @@ ali_cmv <- read_tsv("raw tables/ali_cmv.txt") %>%
   ungroup() %>%
   select(Gene, donor, condition, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ali_cmv clean")
+```
 
+```{r ali_hrv}
 # ali_hrv
 ali_hrv <- read_tsv("raw tables/ali_hrv.txt") %>%
   mutate(disease_state = factor(disease_state, levels = c("non-asthmatic", "asthmatic")),
@@ -101,7 +108,9 @@ ali_hrv <- read_tsv("raw tables/ali_hrv.txt") %>%
   ungroup() %>%
   select(Gene, disease_state, condition, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ali_hrv clean")
+```
 
+```{r ali_ib}
 # ali_ib
 ali_ib <- read_tsv("raw tables/ali_ib.txt") %>%
   quickfactor(treatment) %>%
@@ -112,7 +121,9 @@ ali_ib <- read_tsv("raw tables/ali_ib.txt") %>%
   ungroup() %>%
   select(Gene, set, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ali_ib clean")
+```
 
+```{r all_cells}
 # all_cells
 all_cells <- read_tsv("raw tables/all_cells.txt") %>%
   quickfactor(cells) %>%
@@ -120,7 +131,9 @@ all_cells <- read_tsv("raw tables/all_cells.txt") %>%
   mutate(fold = NA, log2_fold = NA) %>%
   select(Gene, sample, cells, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("all_cells clean")
+```
 
+```{r b2b_mi}
 # b2b_mi
 b2b_mi <- read_tsv("raw tables/b2b_mi.txt") %>%
   quickfactor(treatment, time) %>%
@@ -134,7 +147,9 @@ b2b_mi <- read_tsv("raw tables/b2b_mi.txt") %>%
   ungroup() %>%
   select(Gene, rep, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("b2b_mi clean")
+```
 
+```{r b2b_pka with chunking}
 # b2b_pka
 b2b_pka <- read_tsv("raw tables/b2b_pka.txt") %>%
   rename(Gene = gene,
@@ -166,7 +181,9 @@ for (chunk_name in names(ranges)) {
   chunk_df <- b2b_pka_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
   saveRDS(chunk_df, paste0("clean tables/b2b_pka_transcripts clean ", chunk_name, ".rds"))
 }
+```
 
+```{r b2b_dko with chunking}
 # b2b_dko
 b2b_dko <- read_tsv("raw tables/b2b_dko.txt") %>%
   select(Gene, rep, condition, treatment, tpm) %>%
@@ -196,7 +213,9 @@ for (chunk_name in names(ranges)) {
   chunk_df <- b2b_dko_transcripts %>% filter(substr(Gene, 1, 1) %in% letters_range)
   saveRDS(chunk_df, paste0("clean tables/b2b_dko_transcripts clean ", chunk_name, ".rds"))
 }
+```
 
+```{r b2b_tap_bay_vil}
 # b2b_tap_bay_vil
 b2b_tap_bay_vil <- read_tsv("raw tables/b2b_tap_bay_vil.txt") %>%
   rename(Gene = gene,
@@ -207,7 +226,9 @@ b2b_tap_bay_vil <- read_tsv("raw tables/b2b_tap_bay_vil.txt") %>%
          fold = 2^log2_fold) %>%
   select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("b2b_tap_bay_vil clean")
+```
 
+```{r dusp}
 # dusp
 dusp <- read_tsv("raw tables/dusp.txt") %>%
   rename(rep = set) %>%
@@ -216,7 +237,9 @@ dusp <- read_tsv("raw tables/dusp.txt") %>%
          fold = 2^log2_fold) %>%
   select(Gene, rep, condition, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("dusp clean")
+```
 
+```{r hbe_iid}
 # hbe_iid
 hbe_iid <- read_tsv("raw tables/hbe_iid.txt") %>%
   rename(rep = set) %>%
@@ -229,18 +252,33 @@ hbe_iid <- read_tsv("raw tables/hbe_iid.txt") %>%
          fold = 2^log2_fold) %>%
   select(Gene, rep, treatment, ttt, ifn, time, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("hbe_iid clean")
+```
 
-# hbe_tf
-hbe_tf <- read_tsv("raw tables/hbe_tf.txt") %>%
-  quickfactor(treatment, time) %>%
-  group_by(Gene, patient, time)  %>%
-  mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"]) %>%
-  ungroup() %>%
-  mutate(tpm = (2^log2_tpm) - 0.01,
-         fold = 2^log2_fold) %>%
-  select(Gene, patient, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
-  saveTables("hbe_tf clean")
+```{r hbe_tf}
+# # hbe_tf
+# hbe_tf <- read_tsv("raw tables/hbe_tf.txt") %>%
+#   quickfactor(treatment, time) %>%
+#   group_by(Gene, patient, time)  %>%
+#   mutate(log2_fold = log2_tpm - log2_tpm[treatment == "NS"]) %>%
+#   ungroup() %>%
+#   mutate(tpm = (2^log2_tpm) - 0.01,
+#          fold = 2^log2_fold) %>%
+#   select(Gene, patient, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+#   saveTables("hbe_tf clean")
 
+# 210426: TP and VJ say some Gene rows contain multiple samples separated by a slash
+#         ... we need to separate them but keep the synonyms.
+
+hbe_tf <- readRDS("clean tables/hbe_tf clean.rds")
+
+hbe_tf_fixed <- hbe_tf %>%
+  separate_rows(Gene, sep = "/") %>%
+  mutate(Gene = word(Gene, 1))
+
+saveTables(hbe_tf_fixed, "hbe_tf clean")
+```
+
+```{r ikba}
 # ikba
 ikba <- read_tsv("raw tables/ikba.txt") %>%
   rename(rep = set) %>%
@@ -249,7 +287,9 @@ ikba <- read_tsv("raw tables/ikba.txt") %>%
          fold = 2^log2_fold) %>%
   select(Gene, rep, condition, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("ikba clean")
+```
 
+```{r hbe_cmv}
 # hbe_cmv
 hbe_cmv <- read_tsv("raw tables/hbe_cmv.txt") %>%
   mutate(condition = factor(condition, levels = c("CON", "CMV")),
@@ -262,9 +302,7 @@ hbe_cmv <- read_tsv("raw tables/hbe_cmv.txt") %>%
   saveTables("hbe_cmv clean")
 ```
 
-
-
-```{r in progress}
+```{r b2b_rno_ono_vil}
 b2b_rno_ono_vil <- read_csv("raw tables/b2b_rno_ono_vil.txt") %>%
   rename(Gene = HGNC) %>%
   pivot_longer(cols = -Gene, values_to = "tpm", names_to = "sample") %>%
@@ -292,8 +330,9 @@ b2b_rno_ono_vil <- read_csv("raw tables/b2b_rno_ono_vil.txt") %>%
   ungroup() %>%
   select(Gene, rep, treatment, tpm, fold, log2_tpm, log2_fold) %>%
   saveTables("b2b_rno_ono_vil clean")
+```
 
-
+```{r b2b_rno_salm}
 b2b_rno_salm <- read_tsv("raw tables/b2b_rno_salm.txt") %>%
   select(-row) %>%
   rename(Gene = HGNC) %>%
