@@ -44,7 +44,8 @@ ui <- fluidPage(
           "Datasets with 2+ celltypes" = c(
             "Basal expression - single gene",
             "Basal expression - heatmap",
-            "ALI vs HBE vs BEAS-2B - single gene"
+            "ALI vs HBE vs BEAS-2B - single gene",
+            "ALI vs HBE vs BEAS-2B - heatmap"
           )
         )
       ),
@@ -71,6 +72,9 @@ ui <- fluidPage(
       helpText(
         HTML("
       <b> CHANGELOG </b> <br/>
+      v2.3, May 3 2026 <br/>
+        - Added ALI/HBE/B2B forskolin comparison <br/>
+        - Upgraded heatmap functions to support above dataset <br/>
       v2.2b, April 21 2026 <br/>
         - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
         - Set unpublished data to private <br/>
@@ -187,7 +191,8 @@ server <- function(input, output) {
     "Basal expression - heatmap"             = "multi_gene",
     "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene",
     "BEAS-2B RNO Salm (GSE126981)"           = "single_gene",
-    "ALI vs HBE vs BEAS-2B - single gene"    = "single_gene"
+    "ALI vs HBE vs BEAS-2B - single gene"    = "single_gene",
+    "ALI vs HBE vs BEAS-2B - heatmap"        = "multi_gene"
   )
   
   # dataset file registry
@@ -214,7 +219,8 @@ server <- function(input, output) {
     "Basal expression - heatmap"             = "data/all_cells clean.rds",
     "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds",
     "BEAS-2B RNO Salm (GSE126981)"           = "data/b2b_rno_salm clean.rds",
-    "ALI vs HBE vs BEAS-2B - single gene"    = "data/ali_b2b_hbe_fsk clean.rds"
+    "ALI vs HBE vs BEAS-2B - single gene"    = "data/ali_b2b_hbe_fsk clean.rds",
+    "ALI vs HBE vs BEAS-2B - heatmap"        = "data/ali_b2b_hbe_fsk clean.rds"
   )
   
   # chunk mappings
@@ -267,7 +273,13 @@ server <- function(input, output) {
   
   # function to build basal cell types heatmap (avoids monster if_else tree)
   
-  render_heatmap <- function(dat, metric) {
+  render_heatmap <- function(
+    dat, 
+    colsplit, 
+    metric, 
+    vertical.scale = 1,
+    horizontal.scale = 1
+    ) {
     
     mat <- dat %>% 
       select("Gene", "sample", metric) %>%
@@ -277,16 +289,16 @@ server <- function(input, output) {
       column_to_rownames("Gene") %>%
       as.matrix()
     
-    colsplit = factor(
-      c(
-        rep("A549", 4),
-        rep("ALI", 5),
-        rep("B2B", 4),
-        rep("Brushings", 3),
-        rep("HBE", 5)
-      ),
-      levels = c("A549", "ALI", "B2B", "Brushings", "HBE")
-    )
+    # colsplit = factor(
+    #   c(
+    #     rep("A549", 4),
+    #     rep("ALI", 5),
+    #     rep("B2B", 4),
+    #     rep("Brushings", 3),
+    #     rep("HBE", 5)
+    #   ),
+    #   levels = c("A549", "ALI", "B2B", "Brushings", "HBE")
+    # )
     
     vals <- as.numeric(mat)
     vals <- vals[is.finite(vals)]
@@ -324,23 +336,24 @@ server <- function(input, output) {
       )
     }
     
-    hm <- Heatmap(mat,
-                  cluster_rows = F, 
-                  cluster_columns = F,
-                  column_split = colsplit,
-                  rect_gp = grid::gpar(col = "black", lwd = 0.5),
-                  show_row_names = TRUE,
-                  show_column_names = FALSE,
-                  row_names_side = "left",
-                  column_title_rot = 45,
-                  width  = grid::unit(0.75 * ncol(mat), "cm"),
-                  height = grid::unit(0.75 * nrow(mat), "cm"),
-                  name = metric,
-                  col = col_fun
+    hm <- Heatmap(
+      mat,
+      cluster_rows = F, 
+      cluster_columns = F,
+      column_split = colsplit,
+      rect_gp = grid::gpar(col = "black", lwd = 0.5),
+      show_row_names = TRUE,
+      show_column_names = FALSE,
+      row_names_side = "left",
+      column_title_rot = 45,
+      width  = grid::unit(horizontal.scale * 0.75 * ncol(mat), "cm"),
+      height = grid::unit(vertical.scale * 0.75 * nrow(mat), "cm"),
+      name = metric,
+      col = col_fun
     )
     
     draw(hm)
-      
+    
   }
   
   ## ==== snapshot choices and define state ====
@@ -436,12 +449,59 @@ server <- function(input, output) {
     req(state(), x())
     
     # defer to a heatmap function if a multi-gene option is picked
+    # fuck!!! i guess we doing if_else trees again
+    
     if (state()$type == "multi_gene") {
+      
       req(length(state()$genes) > 0)
-      return(render_heatmap(x(), metric = state()$metric))
+      
+      if (state()$dataset == "Basal expression - heatmap"){
+        return(
+          render_heatmap(
+            x(),
+            metric = state()$metric,
+            colsplit = factor(
+              c(
+                rep("A549", 4),
+                rep("ALI", 5),
+                rep("B2B", 4),
+                rep("Brushings", 3),
+                rep("HBE", 5)
+              ),
+              levels = c("A549", "ALI", "B2B", "Brushings", "HBE")
+            )
+          )
+        )
+      }
+      
+      else if (state()$dataset == "ALI vs HBE vs BEAS-2B - heatmap"){
+        return(
+          render_heatmap(
+            x(),
+            metric = state()$metric,
+            vertical.scale = 0.6,
+            horizontal.scale = 0.4,
+            colsplit = factor(
+              c(
+                rep("ALI NS", 10),
+                rep("ALI Fsk", 10),
+                rep("HBE NS", 5),
+                rep("HBE Fsk", 5),
+                rep("B2B NS", 5),
+                rep("B2B Fsk", 5)
+              ),
+              levels = c(
+                "ALI NS", "ALI Fsk",
+                "HBE NS", "HBE Fsk",
+                "B2B NS", "B2B Fsk"
+              )
+            )
+          )
+        )
+      }
     }
     
-    # otherwise use MM's monster tree
+    # otherwise use MM's tree
     if (state()$dataset == "A549 IL1B Bud") {
       x() %>% 
         ggplot(aes(time, .data[[state()$metric]], group = treatment, color = treatment)) +

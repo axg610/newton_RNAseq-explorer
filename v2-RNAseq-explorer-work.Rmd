@@ -361,13 +361,15 @@ b2b_rno_salm <- read_tsv("raw tables/b2b_rno_salm.txt") %>%
   saveTables("b2b_rno_salm clean")
 ```
 
-```{r}
+```{r ali_b2b_hbe_fsk}
 ali_b2b_hbe_fsk <- read_tsv("raw tables/ali_b2b_hbe_fsk.txt") %>%
   mutate(log2_tpm = log2(tpm), .before = fold) %>%
   select(Gene, celltype, rep, old_rep_name = old_rep, time, treatment, 
          tpm, fold, log2_tpm, log2_fold = log2fold) %>%
   quickfactor(celltype) %>%
   quickfactor(treatment) %>%
+  mutate(sample = paste0(celltype, "_", treatment, "_", rep), .before = celltype) %>%
+  arrange(Gene, celltype, treatment) %>%
   saveTables("ali_b2b_hbe_fsk clean")
 ```
 
