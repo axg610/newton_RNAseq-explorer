@@ -43,7 +43,8 @@ ui <- fluidPage(
           ),
           "Datasets with 2+ celltypes" = c(
             "Basal expression - single gene",
-            "Basal expression - heatmap"
+            "Basal expression - heatmap",
+            "ALI vs HBE vs BEAS-2B - single gene"
           )
         )
       ),
@@ -90,13 +91,18 @@ ui <- fluidPage(
       
     ),
     mainPanel(
-      tabsetPanel(type = "tabs", 
-                  tabPanel("Plot", plotOutput("expression_plot") %>% 
-                             withSpinner(
-                               type = 6, 
-                               color = "#555555", 
-                               caption = "Working...")), 
-                  tabPanel("Table", tableOutput("table"))
+      tabsetPanel(
+        type = "tabs", 
+        tabPanel(
+          "Plot", plotOutput("expression_plot") %>% 
+            withSpinner(
+              type = 6, 
+              color = "#555555", 
+              caption = "Working...")
+        ), 
+        tabPanel(
+          "Table", tableOutput("table")
+        )
       )
     )
   )
@@ -111,7 +117,7 @@ single_gene_ui <- textInput(
 multi_gene_ui <- textAreaInput(
   "genes",
   "Gene list (one per line or comma-separated):",
-  value = "FKBP5\nDUSP1\nNFKBIA",
+  value = "FKBP5\nDUSP1\nNFKBIA\nNR4A3\nSIK1",
   rows = 6
 )
 
@@ -180,7 +186,8 @@ server <- function(input, output) {
     "Basal expression - single gene"         = "single_gene",
     "Basal expression - heatmap"             = "multi_gene",
     "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene",
-    "BEAS-2B RNO Salm (GSE126981)"           = "single_gene"
+    "BEAS-2B RNO Salm (GSE126981)"           = "single_gene",
+    "ALI vs HBE vs BEAS-2B - single gene"    = "single_gene"
   )
   
   # dataset file registry
@@ -206,7 +213,8 @@ server <- function(input, output) {
     "Basal expression - single gene"         = "data/all_cells clean.rds",
     "Basal expression - heatmap"             = "data/all_cells clean.rds",
     "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds",
-    "BEAS-2B RNO Salm (GSE126981)"           = "data/b2b_rno_salm clean.rds"
+    "BEAS-2B RNO Salm (GSE126981)"           = "data/b2b_rno_salm clean.rds",
+    "ALI vs HBE vs BEAS-2B - single gene"    = "data/ali_b2b_hbe_fsk clean.rds"
   )
   
   # chunk mappings
@@ -675,6 +683,19 @@ server <- function(input, output) {
         theme(axis.text.x = element_text(angle = 315, hjust = 0),
               aspect.ratio = 0.5) +
         labs(x = NULL, y = y_label())
+    }
+    else if (state()$dataset == "ALI vs HBE vs BEAS-2B - single gene"){
+      x() %>%
+        ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
+        facet_grid(Gene~celltype) +
+        geom_boxplot(outliers = F) +
+        geom_point() +
+        my_theme +
+        theme(aspect.ratio = 2) +
+        labs(
+          x = NULL, y = y_label(), 
+          caption = "***Note: this figure is a composite of three\nseparate sequencing runs (ALI, HBE, and BEAS-2B)"
+          )
     }
     
     
