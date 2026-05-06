@@ -37,6 +37,11 @@ a549_ib <- read_tsv("raw tables/a549_ib.txt") %>%
   ungroup() %>%
   quickfactor(treatment, time) %>%
   select(Gene, rep, treatment, time, tpm, fold, log2_tpm, log2_fold) %>%
+  mutate(
+    sample = paste0(treatment, "_", time, "h_", rep),
+    sample = gsub("IL1B + Bud", "IB", sample),
+    .before = 2) %>%
+  arrange(Gene, treatment, time, rep) %>%
   saveTables("a549_ib clean")
 
 # a549_ib_transcripts (write a full tsv but chunk down the rds files)

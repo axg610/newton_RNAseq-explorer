@@ -14,8 +14,9 @@ ui <- fluidPage(
         "dataset", "Dataset:",
         choices = list(
           "A549 datasets" = c(
-            "A549 IL1B Bud",
-            "A549 IL1B Bud (transcripts)",
+            "A549 IL1B Bud - single gene",
+            "A549 IL1B Bud - heatmap",
+            "A549 IL1B Bud (transcripts) - single gene",
             "A549 Ad-DUSP1 IL1B",
             "A549 Ad-IkBa IL1B Dex"
           ),
@@ -64,17 +65,21 @@ ui <- fluidPage(
       
       helpText(
         HTML(
-          '<a href="https://drive.google.com/drive/folders/1iumRvf95fkqg2FvuGiZunExZcJpQr5lN?usp=sharing" target="_blank"><b>Data repo here</b></a><br/>
-     <a href="https://github.com/axg610/newton_RNAseq-explorer" target="_blank"><b>Code repo here</b></a>'
+          '<br/>
+          <a href="https://drive.google.com/drive/folders/1iumRvf95fkqg2FvuGiZunExZcJpQr5lN?usp=sharing" target="_blank"><b>Data repo here</b></a><br/>
+     <a href="https://github.com/axg610/newton_RNAseq-explorer" target="_blank"><b>Code repo here</b></a>
+          <br/>'
         )
       ),
       
       helpText(
         HTML("
       <b> CHANGELOG </b> <br/>
+      v2.3a, May 5 2026 <br/>
+        - Added heatmap option to A549 IL1B Bud <br/>
+        - Upgrades to internal heatmap functions <br/>
       v2.3, May 3 2026 <br/>
         - Added ALI/HBE/B2B forskolin comparison <br/>
-        - Upgraded heatmap functions to support above dataset <br/>
       v2.2b, April 21 2026 <br/>
         - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
         - Set unpublished data to private <br/>
@@ -121,7 +126,10 @@ single_gene_ui <- textInput(
 multi_gene_ui <- textAreaInput(
   "genes",
   "Gene list (one per line or comma-separated):",
-  value = "FKBP5\nDUSP1\nNFKBIA\nNR4A3\nSIK1",
+  value = paste(
+    readLines("default_multi_genes.txt"),
+    collapse = "\n"
+  ),
   rows = 6
 )
 
@@ -169,58 +177,60 @@ server <- function(input, output) {
   
   # dataset type registry
   dataset_meta <- list(
-    "A549 IL1B Bud"                          = "single_gene",
-    "A549 IL1B Bud (transcripts)"            = "single_gene",
-    "HBE IL1B IFNg Dex"                      = "single_gene",
-    "HBE TNF Form"                           = "single_gene",
-    "ALI IL1B Bud"                           = "single_gene",
-    "ALI Bud Form"                           = "single_gene",
-    "ALI Cig IL17A Bud"                      = "single_gene",
-    "ALI CMV"                                = "single_gene",
-    "ALI HRV (Bai 2015)"                     = "single_gene",
-    "BEAS-2B Mom Ind"                        = "single_gene",
-    "A549 Ad-DUSP1 IL1B"                     = "single_gene",
-    "A549 Ad-IkBa IL1B Dex"                  = "single_gene",
-    "BEAS-2B AKO/BKO Form Bud"               = "single_gene",
-    "BEAS-2B AKO/BKO Form Bud (transcripts)" = "single_gene",
-    "BEAS-2B dKO Form"                       = "single_gene",
-    "BEAS-2B dKO Form (transcripts)"         = "single_gene",
-    "BEAS-2B Tap Bay Vil"                    = "single_gene",
-    "HBE CMV timecourse (Parkins Lab)"       = "single_gene",
-    "Basal expression - single gene"         = "single_gene",
-    "Basal expression - heatmap"             = "multi_gene",
-    "BEAS-2B RNO ONO Vil (GSE267218)"        = "single_gene",
-    "BEAS-2B RNO Salm (GSE126981)"           = "single_gene",
-    "ALI vs HBE vs BEAS-2B - single gene"    = "single_gene",
-    "ALI vs HBE vs BEAS-2B - heatmap"        = "multi_gene"
+    "A549 IL1B Bud - single gene"               = "single_gene",
+    "A549 IL1B Bud - heatmap"                   = "multi_gene",
+    "A549 IL1B Bud (transcripts) - single gene" = "single_gene",
+    "HBE IL1B IFNg Dex"                         = "single_gene",
+    "HBE TNF Form"                              = "single_gene",
+    "ALI IL1B Bud"                              = "single_gene",
+    "ALI Bud Form"                              = "single_gene",
+    "ALI Cig IL17A Bud"                         = "single_gene",
+    "ALI CMV"                                   = "single_gene",
+    "ALI HRV (Bai 2015)"                        = "single_gene",
+    "BEAS-2B Mom Ind"                           = "single_gene",
+    "A549 Ad-DUSP1 IL1B"                        = "single_gene",
+    "A549 Ad-IkBa IL1B Dex"                     = "single_gene",
+    "BEAS-2B AKO/BKO Form Bud"                  = "single_gene",
+    "BEAS-2B AKO/BKO Form Bud (transcripts)"    = "single_gene",
+    "BEAS-2B dKO Form"                          = "single_gene",
+    "BEAS-2B dKO Form (transcripts)"            = "single_gene",
+    "BEAS-2B Tap Bay Vil"                       = "single_gene",
+    "HBE CMV timecourse (Parkins Lab)"          = "single_gene",
+    "Basal expression - single gene"            = "single_gene",
+    "Basal expression - heatmap"                = "multi_gene",
+    "BEAS-2B RNO ONO Vil (GSE267218)"           = "single_gene",
+    "BEAS-2B RNO Salm (GSE126981)"              = "single_gene",
+    "ALI vs HBE vs BEAS-2B - single gene"       = "single_gene",
+    "ALI vs HBE vs BEAS-2B - heatmap"           = "multi_gene"
   )
   
   # dataset file registry
   dataset_map <- list(
-    "A549 IL1B Bud"                          = "data/a549_ib clean.rds",
-    "A549 IL1B Bud (transcripts)"            = NULL, # handled via chunks
-    "HBE IL1B IFNg Dex"                      = "data/hbe_iid clean.rds",
-    "HBE TNF Form"                           = "data/hbe_tf clean.rds",
-    "ALI IL1B Bud"                           = "data/ali_ib clean.rds",
-    "ALI Bud Form"                           = "data/ali_bf clean.rds",
-    "ALI Cig IL17A Bud"                      = "data/ali_cig clean.rds",
-    "ALI CMV"                                = "data/ali_cmv clean.rds",
-    "ALI HRV (Bai 2015)"                     = "data/ali_hrv clean.rds",
-    "BEAS-2B Mom Ind"                        = "data/b2b_mi clean.rds",
-    "A549 Ad-DUSP1 IL1B"                     = "data/dusp clean.rds",
-    "A549 Ad-IkBa IL1B Dex"                  = "data/ikba clean.rds",
-    "BEAS-2B AKO/BKO Form Bud"               = "data/b2b_pka clean.rds",
-    "BEAS-2B AKO/BKO Form Bud (transcripts)" = NULL, # handled via chunks
-    "BEAS-2B dKO Form"                       = "data/b2b_dko clean.rds",
-    "BEAS-2B dKO Form (transcripts)"         = NULL, # handled via chunks
-    "BEAS-2B Tap Bay Vil"                    = "data/b2b_tap_bay_vil clean.rds",
-    "HBE CMV timecourse (Parkins Lab)"       = "data/hbe_cmv clean.rds",
-    "Basal expression - single gene"         = "data/all_cells clean.rds",
-    "Basal expression - heatmap"             = "data/all_cells clean.rds",
-    "BEAS-2B RNO ONO Vil (GSE267218)"        = "data/b2b_rno_ono_vil clean.rds",
-    "BEAS-2B RNO Salm (GSE126981)"           = "data/b2b_rno_salm clean.rds",
-    "ALI vs HBE vs BEAS-2B - single gene"    = "data/ali_b2b_hbe_fsk clean.rds",
-    "ALI vs HBE vs BEAS-2B - heatmap"        = "data/ali_b2b_hbe_fsk clean.rds"
+    "A549 IL1B Bud - single gene"                = "data/a549_ib clean.rds",
+    "A549 IL1B Bud - heatmap"                    = "data/a549_ib clean.rds",
+    "A549 IL1B Bud (transcripts) - single gene"  = NULL, # handled via chunks
+    "HBE IL1B IFNg Dex"                          = "data/hbe_iid clean.rds",
+    "HBE TNF Form"                               = "data/hbe_tf clean.rds",
+    "ALI IL1B Bud"                               = "data/ali_ib clean.rds",
+    "ALI Bud Form"                               = "data/ali_bf clean.rds",
+    "ALI Cig IL17A Bud"                          = "data/ali_cig clean.rds",
+    "ALI CMV"                                    = "data/ali_cmv clean.rds",
+    "ALI HRV (Bai 2015)"                         = "data/ali_hrv clean.rds",
+    "BEAS-2B Mom Ind"                            = "data/b2b_mi clean.rds",
+    "A549 Ad-DUSP1 IL1B"                         = "data/dusp clean.rds",
+    "A549 Ad-IkBa IL1B Dex"                      = "data/ikba clean.rds",
+    "BEAS-2B AKO/BKO Form Bud"                   = "data/b2b_pka clean.rds",
+    "BEAS-2B AKO/BKO Form Bud (transcripts)"     = NULL, # handled via chunks
+    "BEAS-2B dKO Form"                           = "data/b2b_dko clean.rds",
+    "BEAS-2B dKO Form (transcripts)"             = NULL, # handled via chunks
+    "BEAS-2B Tap Bay Vil"                        = "data/b2b_tap_bay_vil clean.rds",
+    "HBE CMV timecourse (Parkins Lab)"           = "data/hbe_cmv clean.rds",
+    "Basal expression - single gene"             = "data/all_cells clean.rds",
+    "Basal expression - heatmap"                 = "data/all_cells clean.rds",
+    "BEAS-2B RNO ONO Vil (GSE267218)"            = "data/b2b_rno_ono_vil clean.rds",
+    "BEAS-2B RNO Salm (GSE126981)"               = "data/b2b_rno_salm clean.rds",
+    "ALI vs HBE vs BEAS-2B - single gene"        = "data/ali_b2b_hbe_fsk clean.rds",
+    "ALI vs HBE vs BEAS-2B - heatmap"            = "data/ali_b2b_hbe_fsk clean.rds"
   )
   
   # chunk mappings
@@ -406,15 +416,15 @@ server <- function(input, output) {
     dataset <- state()$dataset
     
     # Check if dataset is transcript-level and needs chunked loading
-    if (dataset %in% c("A549 IL1B Bud (transcripts)",
+    if (dataset %in% c("A549 IL1B Bud (transcripts) - single gene",
                        "BEAS-2B AKO/BKO Form Bud (transcripts)",
                        "BEAS-2B dKO Form (transcripts)")) {
       
       # Determine dataset prefix (for path) from dataset name
       prefix <- switch(dataset,
-                       "A549 IL1B Bud (transcripts)"            = "data/a549_ib_transcripts clean",
-                       "BEAS-2B AKO/BKO Form Bud (transcripts)" = "data/b2b_pka_transcripts clean",
-                       "BEAS-2B dKO Form (transcripts)"         = "data/b2b_dko_transcripts clean")
+                       "A549 IL1B Bud (transcripts) - single gene" = "data/a549_ib_transcripts clean",
+                       "BEAS-2B AKO/BKO Form Bud (transcripts)"    = "data/b2b_pka_transcripts clean",
+                       "BEAS-2B dKO Form (transcripts)"            = "data/b2b_dko_transcripts clean")
       
       # Load correct chunk
       gene <- genes[[1]]
@@ -499,10 +509,45 @@ server <- function(input, output) {
           )
         )
       }
+      
+      else if (state()$dataset == "A549 IL1B Bud - heatmap"){
+        return(
+          render_heatmap(
+            x(),
+            metric = state()$metric,
+            vertical.scale = 0.5,
+            horizontal.scale = 0.3,
+            colsplit = factor(
+              c(
+                rep("NS 1h", 4), rep("NS 2h", 4), rep("NS 6h", 4), 
+                rep("NS 12h", 4), rep("NS 24h", 4),
+                
+                rep("IL1B 1h", 4), rep("IL1B 2h", 4), rep("IL1B 6h", 4), 
+                rep("IL1B 12h", 4), rep("IL1B 24h", 4),
+                
+                rep("Bud 1h", 4), rep("Bud 2h", 4), rep("Bud 6h", 4), 
+                rep("Bud 12h", 4), rep("Bud 24h", 4),
+                
+                rep("I+B 1h", 4), rep("I+B 2h", 4), rep("I+B 6h", 4), 
+                rep("I+B 12h", 3), # <- intentional
+                rep("I+B 24h", 4)
+              ),
+              levels = c(
+                "NS 1h", "NS 2h", "NS 6h", "NS 12h", "NS 24h",
+                "IL1B 1h", "IL1B 2h", "IL1B 6h", "IL1B 12h", "IL1B 24h",
+                "Bud 1h", "Bud 2h", "Bud 6h", "Bud 12h", "Bud 24h",
+                "I+B 1h", "I+B 2h", "I+B 6h", "I+B 12h", "I+B 24h"
+              )
+            )
+          )
+        )
+      }
+      
+      
     }
     
     # otherwise use MM's tree
-    if (state()$dataset == "A549 IL1B Bud") {
+    if (state()$dataset == "A549 IL1B Bud - single gene") {
       x() %>% 
         ggplot(aes(time, .data[[state()$metric]], group = treatment, color = treatment)) +
         stat_summary(fun = mean, geom = "line", linewidth = 1)+
@@ -515,7 +560,7 @@ server <- function(input, output) {
         labs(y = y_label(), x = "time (h)", color = "Treatment") + 
         my_theme + theme(aspect.ratio = 1)
     }
-    else if (state()$dataset == "A549 IL1B Bud (transcripts)") {
+    else if (state()$dataset == "A549 IL1B Bud (transcripts) - single gene") {
       x() %>% 
         ggplot(aes(time, .data[[state()$metric]], group = treatment, color = treatment)) +
         stat_summary(fun = mean, geom = "line", linewidth = 1)+
