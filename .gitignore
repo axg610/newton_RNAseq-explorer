@@ -8,3 +8,7 @@ RNAseq_explorer/rsconnect/
 clean tables/
 raw tables/
 v1/
+
+RNAseq_explorer/interactive-heatmaps/
+clean interactive heatmaps/
+raw interactive heatmaps/

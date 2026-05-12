@@ -1,68 +1,117 @@
 library(shiny)
 library(shinycssloaders)
 library(ComplexHeatmap)
+library(InteractiveComplexHeatmap)
 library(tidyverse)
 
 # ==== define ui ====
 
 ui <- fluidPage(
+  
   titlePanel("Newton/Giembycz Lab RNAseq Explorer"),
+  
   sidebarLayout(
+    
     sidebarPanel(
       
-      selectInput(
-        "dataset", "Dataset:",
-        choices = list(
-          "A549 datasets" = c(
-            "A549 IL1B Bud - single gene",
-            "A549 IL1B Bud - heatmap",
-            "A549 IL1B Bud (transcripts) - single gene",
-            "A549 Ad-DUSP1 IL1B",
-            "A549 Ad-IkBa IL1B Dex"
-          ),
-          "ALI datasets" = c(
-            "ALI IL1B Bud",
-            "ALI Bud Form",
-            "ALI Cig IL17A Bud",
-            "ALI CMV",
-            "ALI HRV (Bai 2015)"
-          ),
-          "BEAS-2B datasets" = c(
-            "BEAS-2B AKO/BKO Form Bud",
-            "BEAS-2B AKO/BKO Form Bud (transcripts)",
-            "BEAS-2B dKO Form",
-            "BEAS-2B dKO Form (transcripts)",
-            "BEAS-2B Mom Ind",
-            "BEAS-2B Tap Bay Vil",
-            "BEAS-2B RNO ONO Vil (GSE267218)",
-            "BEAS-2B RNO Salm (GSE126981)"
-          ),
-          "HBE datasets" = c(
-            "HBE IL1B IFNg Dex",
-            "HBE TNF Form",
-            "HBE CMV timecourse (Parkins Lab)"
-          ),
-          "Datasets with 2+ celltypes" = c(
-            "Basal expression - single gene",
-            "Basal expression - heatmap",
-            "ALI vs HBE vs BEAS-2B - single gene",
-            "ALI vs HBE vs BEAS-2B - heatmap"
-          )
+      # select mode
+      tabsetPanel(
+        id = "app_mode",
+        type = "tabs",
+        
+        tabPanel(
+          "Gene search mode",
+          value = "lookup"
+        ),
+        
+        tabPanel(
+          "Interactive heatmap mode",
+          value = "interactive"
         )
       ),
       
-      # textInput("gene", "Official gene symbol:", value = "FKBP5"),
-      uiOutput("gene_input"),
-      
-      radioButtons(
-        "metric",
-        "Y-axis:",
-        choices = c("log2_tpm", "log2_fold", "tpm", "fold"),
-        selected = "log2_tpm"
+      # boot lookup ui
+      conditionalPanel(
+        condition = "input.app_mode == 'lookup'",
+        
+        selectInput(
+          "dataset", "Dataset:",
+          choices = list(
+            "A549 datasets" = c(
+              "A549 IL1B Bud - single gene",
+              "A549 IL1B Bud - heatmap",
+              "A549 IL1B Bud (transcripts) - single gene",
+              "A549 Ad-DUSP1 IL1B",
+              "A549 Ad-IkBa IL1B Dex"
+            ),
+            "ALI datasets" = c(
+              "ALI IL1B Bud",
+              "ALI Bud Form",
+              "ALI Cig IL17A Bud",
+              "ALI CMV",
+              "ALI HRV (Bai 2015)"
+            ),
+            "BEAS-2B datasets" = c(
+              "BEAS-2B AKO/BKO Form Bud",
+              "BEAS-2B AKO/BKO Form Bud (transcripts)",
+              "BEAS-2B dKO Form",
+              "BEAS-2B dKO Form (transcripts)",
+              "BEAS-2B Mom Ind",
+              "BEAS-2B Tap Bay Vil",
+              "BEAS-2B RNO ONO Vil (GSE267218)",
+              "BEAS-2B RNO Salm (GSE126981)"
+            ),
+            "HBE datasets" = c(
+              "HBE IL1B IFNg Dex",
+              "HBE TNF Form",
+              "HBE CMV timecourse (Parkins Lab)"
+            ),
+            "Datasets with 2+ celltypes" = c(
+              "Basal expression - single gene",
+              "Basal expression - heatmap",
+              "ALI vs HBE vs BEAS-2B - single gene",
+              "ALI vs HBE vs BEAS-2B - heatmap"
+            )
+          )
+        ),
+        
+        uiOutput("gene_input"),
+        
+        radioButtons(
+          "metric",
+          "Y-axis:",
+          choices = c("log2_tpm", "log2_fold", "tpm", "fold"),
+          selected = "log2_tpm"
+        ),
+        
+        actionButton("button", "Generate", icon = icon("redo"))
+        
       ),
       
-      actionButton("button", "Generate", icon = icon("redo")),
+      # boot interactive heatmaps ui
+      conditionalPanel(
+        condition = "input.app_mode == 'interactive'",
+        
+        selectInput(
+          "interactive_heatmap",
+          "Interactive heatmap:",
+          choices = c(
+            "IL1B-regulated genes: A549/ALI/HBE @ 6 h"
+          )
+        ),
+        
+        actionButton(
+          "launch_heatmap",
+          "Launch interactive heatmap",
+          icon = icon("th")
+        ),
+        
+        helpText(
+          HTML("Avoid button spam please! Heatmaps take ~30 seconds to launch.")
+        )
+      ),
       
+      # static helptext
       helpText(
         HTML(
           '<br/>
@@ -75,6 +124,8 @@ ui <- fluidPage(
       helpText(
         HTML("
       <b> CHANGELOG </b> <br/>
+      v3.0, May 11 2026 <br/>
+        - Added interactive heatmaps <br/>
       v2.3a, May 5 2026 <br/>
         - Added heatmap option to A549 IL1B Bud <br/>
         - Upgrades to internal heatmap functions <br/>
@@ -97,20 +148,59 @@ ui <- fluidPage(
       "
         )
       )
-      
     ),
+    
     mainPanel(
-      tabsetPanel(
-        type = "tabs", 
-        tabPanel(
-          "Plot", plotOutput("expression_plot") %>% 
-            withSpinner(
-              type = 6, 
-              color = "#555555", 
-              caption = "Working...")
-        ), 
-        tabPanel(
-          "Table", tableOutput("table")
+      
+      # ==== gene lookup mode ====
+      conditionalPanel(
+        condition = "input.app_mode == 'lookup'",
+        
+        tabsetPanel(
+          type = "tabs", 
+          
+          tabPanel(
+            "Plot",
+            
+            plotOutput("expression_plot") %>% 
+              withSpinner(
+                type = 6, 
+                color = "#555555", 
+                caption = "Working..."
+              )
+          ), 
+          
+          tabPanel(
+            "Table",
+            tableOutput("table")
+          )
+        )
+      ),
+      
+      # ==== interactive heatmap mode ====
+      
+      # should get a spinner working here
+      conditionalPanel(
+        condition = "input.app_mode == 'interactive'",
+        
+        tagList(
+          
+          uiOutput("heatmap_note"),
+          
+          br(),
+          
+          uiOutput("interactive_heatmap_container")
+        )
+      ),
+      
+      conditionalPanel(
+        condition = "input.app_mode == 'interactive' && input.launch_heatmap > 0",
+        
+        InteractiveComplexHeatmapOutput(
+          output_ui = "heatmap_ui",
+          response_ui = "heatmap_response",
+          width1 = 500,
+          height1 = 1400
         )
       )
     )
@@ -134,7 +224,7 @@ multi_gene_ui <- textAreaInput(
 )
 
 # ==== define server ====
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   ## ==== visual elements ====
   
@@ -778,7 +868,7 @@ server <- function(input, output) {
     else if (state()$dataset %in% c(
       "BEAS-2B RNO ONO Vil (GSE267218)",
       "BEAS-2B RNO Salm (GSE126981)" 
-      )) {
+    )) {
       x() %>%
         ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
         facet_wrap(~Gene) +
@@ -800,7 +890,7 @@ server <- function(input, output) {
         labs(
           x = NULL, y = y_label(), 
           caption = "***Note: this figure is a composite of three\nseparate sequencing runs (ALI, HBE, and BEAS-2B)"
-          )
+        )
     }
     
     
@@ -829,8 +919,52 @@ server <- function(input, output) {
   
   output$table <- renderTable({x()})
   
-
+  
+  
+  ## ==== interactive heatmap loader ====
+  
+  observeEvent(input$launch_heatmap, {
+    
+    req(input$app_mode == "interactive")
+    
+    hm <- switch(
+      
+      input$interactive_heatmap,
+      
+      "IL1B-regulated genes: A549/ALI/HBE @ 6 h" =
+        readRDS("interactive-heatmaps/a549 ali hbe IL1B reg genes.rds")
+      
+    )
+    
+    ht <- draw(hm)
+    
+    makeInteractiveComplexHeatmap(
+      input,
+      output,
+      session,
+      ht
+    )
   }
+  )
+  
+  # ==== notes for interactive heatmaps
+  output$heatmap_note <- renderUI({
+    
+    req(input$interactive_heatmap)
+    
+    switch(
+      
+      input$interactive_heatmap,
+      
+      "IL1B-regulated genes: A549/ALI/HBE @ 6 h" =
+        HTML(
+          "<b>Note:</b> Row titles indicate which cell types genes are regulated in.
+          e.g., A = A549 only, L = ALI only, H = HBE only. ALH = regulated in all
+          three celltypes, etc."
+        )
+    )
+  })
+}
 
 # ==== create shiny app ====
 shinyApp(ui = ui, server = server)

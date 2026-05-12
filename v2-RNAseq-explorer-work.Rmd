@@ -1,4 +1,6 @@
 ```{r setup, include=F}
+library(ComplexHeatmap)
+library(InteractiveComplexHeatmap)
 library(tidyverse)
 ```
 
@@ -25,6 +27,41 @@ ranges <- list(
   "P-T" = LETTERS[16:20],
   "U-Z" = LETTERS[21:26]
 )
+
+# heatmap color scales
+generic_l2f_heatmap_colors <- function(
+    mat,
+    colorscale = c(
+      "steelblue4", "steelblue2" , "white", "firebrick2", "firebrick4")
+    ){
+  
+  # return a pretty log2fold heatmap color palette given a matrix
+  
+  colors = circlize::colorRamp2(
+    c(
+      seq(
+        quantile(mat, 0.02),
+        -0.05,
+        length = 75
+      ),
+      seq(
+        -0.49,
+        0.49,
+        length = 50
+      ),
+      seq(
+        0.5,
+        quantile(mat, 0.98),
+        length = 75
+      )
+    ),
+    colorRampPalette(
+      colorscale
+      )(200)
+  )
+  
+  colors
+}
 ```
 
 ```{r a549_ib with chunking}
@@ -376,5 +413,83 @@ ali_b2b_hbe_fsk <- read_tsv("raw tables/ali_b2b_hbe_fsk.txt") %>%
   mutate(sample = paste0(celltype, "_", treatment, "_", rep), .before = celltype) %>%
   arrange(Gene, celltype, treatment) %>%
   saveTables("ali_b2b_hbe_fsk clean")
+```
+
+# ==============================================================================
+
+```{r build il1b_reg interactive heatmap}
+matrices <- readRDS("raw interactive heatmaps/il1b_reg_venn_matrices.rds")
+
+master_matrix <- rbind(
+  matrices[["A"]],
+  matrices[["L"]],
+  matrices[["H"]],
+  matrices[["AL"]],
+  matrices[["AH"]],
+  matrices[["LH"]],
+  matrices[["ALH"]]
+)
+
+columnsplits <- factor(
+  c(
+    rep("A549 GC", 4),
+    rep("A549 IL1B", 4),
+    rep("A549 combo", 4),
+    rep("ALI GC", 5),
+    rep("ALI IL1B", 5),
+    rep("ALI combo", 5),
+    rep("HBE GC", 5),
+    rep("HBE IL1B", 5),
+    rep("HBE combo", 5)
+  ),
+  levels = c(
+    "A549 GC", "A549 IL1B", "A549 combo",
+    "ALI GC", "ALI IL1B", "ALI combo",
+    "HBE GC", "HBE IL1B", "HBE combo"
+  )
+)
+
+rowsplits <- factor(
+  c(
+    rep("A", nrow(matrices[["A"]])),
+    rep("L", nrow(matrices[["L"]])),
+    rep("H", nrow(matrices[["H"]])),
+    rep("AL", nrow(matrices[["AL"]])),
+    rep("AH", nrow(matrices[["AH"]])),
+    rep("LH", nrow(matrices[["LH"]])),
+    rep("ALH", nrow(matrices[["ALH"]]))
+  ),
+  levels = c("A", "L", "H", "AL", "AH", "LH", "ALH")
+)
+
+colorscale <- generic_l2f_heatmap_colors(master_matrix)
+
+hm <- draw(
+  Heatmap(
+    master_matrix,
+    
+    cluster_rows = F,
+    cluster_columns = F,
+    
+    row_split = rowsplits,
+    column_split = columnsplits,
+    
+    col = colorscale,
+    
+    border = "black",
+    show_row_names = F,
+    show_column_names = F,
+    
+    use_raster = T,
+    name = "log2fold",
+    
+    column_title_rot = 45
+  )
+)
+
+saveRDS(hm, "clean interactive heatmaps/a549 ali hbe IL1B reg genes.rds")
+
+htShiny(hm, width1 = 400, height1 = 1400)
+
 ```
 
