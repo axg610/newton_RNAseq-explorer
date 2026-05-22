@@ -2,6 +2,7 @@ library(shiny)
 library(shinycssloaders)
 library(ComplexHeatmap)
 library(InteractiveComplexHeatmap)
+library(magick)
 library(tidyverse)
 
 # ==== define ui ====
@@ -42,7 +43,8 @@ ui <- fluidPage(
               "A549 IL1B Bud - heatmap",
               "A549 IL1B Bud (transcripts) - single gene",
               "A549 Ad-DUSP1 IL1B",
-              "A549 Ad-IkBa IL1B Dex"
+              "A549 Ad-IkBa IL1B Dex 6h",
+              "A549 Ad-IkBa IL1B Bud timecourse"
             ),
             "ALI datasets" = c(
               "ALI IL1B Bud",
@@ -69,8 +71,8 @@ ui <- fluidPage(
             "Datasets with 2+ celltypes" = c(
               "Basal expression - single gene",
               "Basal expression - heatmap",
-              "ALI vs HBE vs BEAS-2B - single gene",
-              "ALI vs HBE vs BEAS-2B - heatmap"
+              "ALI vs HBE vs BEAS-2B Fsk - single gene",
+              "ALI vs HBE vs BEAS-2B Fsk - heatmap"
             )
           )
         ),
@@ -96,7 +98,8 @@ ui <- fluidPage(
           "interactive_heatmap",
           "Interactive heatmap:",
           choices = c(
-            "IL1B-regulated genes: A549/ALI/HBE @ 6 h"
+            "IL1B-regulated genes: A549/ALI/HBE @ 6 h",
+            "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse"
           )
         ),
         
@@ -107,7 +110,7 @@ ui <- fluidPage(
         ),
         
         helpText(
-          HTML("Avoid button spam please! Heatmaps take ~30 seconds to launch.")
+          HTML("Experimental feature. Heatmaps take ~30 seconds to launch. Button spam and zooming in with your web browser might crash the app.")
         )
       ),
       
@@ -124,6 +127,8 @@ ui <- fluidPage(
       helpText(
         HTML("
       <b> CHANGELOG </b> <br/>
+      v3.0.1, May 21 2026 <br/>
+        - Added Ad-IKBA dataset and heatmap <br/>
       v3.0, May 11 2026 <br/>
         - Added interactive heatmaps <br/>
       v2.3a, May 5 2026 <br/>
@@ -231,7 +236,7 @@ server <- function(input, output, session) {
   # MM's colors
   my_cols = c(
     "NS" = "grey10", "IL1B" = "#FC4E07", 
-    "Bud" = "#E7B800", "IL1B + Bud" = "#2E9FDF",
+    "Bud" = "#E7B800", "IL1B + Bud" = "#2E9FDF", "IB" = "#2E9FDF",
     "IL17A" = "#FC4E07", "IL17A + Bud" = "#2E9FDF",
     "TNF" = "#FC4E07", "Dex" = "#E7B800", "IL1B + Dex" = "#2E9FDF",
     "Indacaterol" = "#CC79A7", "Mometazone" = "#E7B800", 
@@ -279,7 +284,7 @@ server <- function(input, output, session) {
     "ALI HRV (Bai 2015)"                        = "single_gene",
     "BEAS-2B Mom Ind"                           = "single_gene",
     "A549 Ad-DUSP1 IL1B"                        = "single_gene",
-    "A549 Ad-IkBa IL1B Dex"                     = "single_gene",
+    "A549 Ad-IkBa IL1B Dex 6h"                  = "single_gene",
     "BEAS-2B AKO/BKO Form Bud"                  = "single_gene",
     "BEAS-2B AKO/BKO Form Bud (transcripts)"    = "single_gene",
     "BEAS-2B dKO Form"                          = "single_gene",
@@ -290,8 +295,9 @@ server <- function(input, output, session) {
     "Basal expression - heatmap"                = "multi_gene",
     "BEAS-2B RNO ONO Vil (GSE267218)"           = "single_gene",
     "BEAS-2B RNO Salm (GSE126981)"              = "single_gene",
-    "ALI vs HBE vs BEAS-2B - single gene"       = "single_gene",
-    "ALI vs HBE vs BEAS-2B - heatmap"           = "multi_gene"
+    "ALI vs HBE vs BEAS-2B Fsk - single gene"   = "single_gene",
+    "ALI vs HBE vs BEAS-2B Fsk - heatmap"       = "multi_gene",
+    "A549 Ad-IkBa IL1B Bud timecourse"          = "single_gene"
   )
   
   # dataset file registry
@@ -308,7 +314,7 @@ server <- function(input, output, session) {
     "ALI HRV (Bai 2015)"                         = "data/ali_hrv clean.rds",
     "BEAS-2B Mom Ind"                            = "data/b2b_mi clean.rds",
     "A549 Ad-DUSP1 IL1B"                         = "data/dusp clean.rds",
-    "A549 Ad-IkBa IL1B Dex"                      = "data/ikba clean.rds",
+    "A549 Ad-IkBa IL1B Dex 6h"                   = "data/ikba clean.rds",
     "BEAS-2B AKO/BKO Form Bud"                   = "data/b2b_pka clean.rds",
     "BEAS-2B AKO/BKO Form Bud (transcripts)"     = NULL, # handled via chunks
     "BEAS-2B dKO Form"                           = "data/b2b_dko clean.rds",
@@ -319,8 +325,9 @@ server <- function(input, output, session) {
     "Basal expression - heatmap"                 = "data/all_cells clean.rds",
     "BEAS-2B RNO ONO Vil (GSE267218)"            = "data/b2b_rno_ono_vil clean.rds",
     "BEAS-2B RNO Salm (GSE126981)"               = "data/b2b_rno_salm clean.rds",
-    "ALI vs HBE vs BEAS-2B - single gene"        = "data/ali_b2b_hbe_fsk clean.rds",
-    "ALI vs HBE vs BEAS-2B - heatmap"            = "data/ali_b2b_hbe_fsk clean.rds"
+    "ALI vs HBE vs BEAS-2B Fsk - single gene"    = "data/ali_b2b_hbe_fsk clean.rds",
+    "ALI vs HBE vs BEAS-2B Fsk - heatmap"        = "data/ali_b2b_hbe_fsk clean.rds",
+    "A549 Ad-IkBa IL1B Bud timecourse"           = "data/ikba_timecourse clean.rds"
   )
   
   # chunk mappings
@@ -389,17 +396,6 @@ server <- function(input, output, session) {
       column_to_rownames("Gene") %>%
       as.matrix()
     
-    # colsplit = factor(
-    #   c(
-    #     rep("A549", 4),
-    #     rep("ALI", 5),
-    #     rep("B2B", 4),
-    #     rep("Brushings", 3),
-    #     rep("HBE", 5)
-    #   ),
-    #   levels = c("A549", "ALI", "B2B", "Brushings", "HBE")
-    # )
-    
     vals <- as.numeric(mat)
     vals <- vals[is.finite(vals)]
     
@@ -457,14 +453,6 @@ server <- function(input, output, session) {
   }
   
   ## ==== snapshot choices and define state ====
-  
-  # state <- eventReactive(input$button, {
-  #   list(
-  #     dataset = input$dataset,
-  #     gene    = toupper(input$gene),
-  #     metric  = input$metric
-  #   )
-  # })
   
   state <- eventReactive(input$button, {
     type <- dataset_type(input$dataset)
@@ -574,7 +562,7 @@ server <- function(input, output, session) {
         )
       }
       
-      else if (state()$dataset == "ALI vs HBE vs BEAS-2B - heatmap"){
+      else if (state()$dataset == "ALI vs HBE vs BEAS-2B Fsk - heatmap"){
         return(
           render_heatmap(
             x(),
@@ -770,7 +758,7 @@ server <- function(input, output, session) {
         my_theme + theme(aspect.ratio = 2) 
       
     }
-    else if (state()$dataset == "A549 Ad-IkBa IL1B Dex") {
+    else if (state()$dataset == "A549 Ad-IkBa IL1B Dex 6h") {
       x() %>% 
         ggplot(aes(condition, .data[[state()$metric]], group = condition , fill = condition)) +
         geom_hline(yintercept = 0, linewidth = 0.75, alpha = 0.5, linetype = 2) +
@@ -879,7 +867,7 @@ server <- function(input, output, session) {
               aspect.ratio = 0.5) +
         labs(x = NULL, y = y_label())
     }
-    else if (state()$dataset == "ALI vs HBE vs BEAS-2B - single gene"){
+    else if (state()$dataset == "ALI vs HBE vs BEAS-2B Fsk - single gene"){
       x() %>%
         ggplot(aes(x = treatment, y = .data[[state()$metric]])) +
         facet_grid(Gene~celltype) +
@@ -891,6 +879,30 @@ server <- function(input, output, session) {
           x = NULL, y = y_label(), 
           caption = "***Note: this figure is a composite of three\nseparate sequencing runs (ALI, HBE, and BEAS-2B)"
         )
+    }
+    else if (state()$dataset == "A549 Ad-IkBa IL1B Bud timecourse"){
+      x() %>%
+        ggplot(
+          aes(
+            x = as.character(time), 
+            y = .data[[state()$metric]], 
+            color = treatment, 
+            group = treatment
+          )
+        ) +
+        facet_grid(
+          Gene~condition,
+          labeller = labeller(condition = c("Ad-IKBA" = "Ad-IκBαΔN"))) +
+        stat_summary(geom = "point", fun = "mean") +
+        stat_summary(geom = "line", fun = "mean") +
+        stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.2) +
+        my_theme +
+        theme(aspect.ratio = 1.5) +
+      labs(
+        x = "time (h)",
+        y = y_label()
+      ) +
+        scale_color_manual(values = my_cols, labels = c("NS", "IL1B", "Bud", "IL1B + Bud"))
     }
     
     
@@ -932,7 +944,10 @@ server <- function(input, output, session) {
       input$interactive_heatmap,
       
       "IL1B-regulated genes: A549/ALI/HBE @ 6 h" =
-        readRDS("interactive-heatmaps/a549 ali hbe IL1B reg genes.rds")
+        readRDS("interactive-heatmaps/a549 ali hbe IL1B reg genes.rds"),
+      
+      "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse" =
+        readRDS("interactive-heatmaps/a549-ikbadn-ib-timecourse-prelim-heatmap.rds")
       
     )
     
@@ -958,10 +973,16 @@ server <- function(input, output, session) {
       
       "IL1B-regulated genes: A549/ALI/HBE @ 6 h" =
         HTML(
-          "<b>Note:</b> Row titles indicate which cell types genes are regulated in.
+          "Created to aid exploration for the IL1B paper. Row titles indicate which cell types genes are regulated in.
           e.g., A = A549 only, L = ALI only, H = HBE only. ALH = regulated in all
           three celltypes, etc."
+        ),
+      
+      "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse" =
+        HTML(
+          "Created to aid exploration for the IL1B paper. 1404 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
         )
+      
     )
   })
 }

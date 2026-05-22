@@ -415,6 +415,18 @@ ali_b2b_hbe_fsk <- read_tsv("raw tables/ali_b2b_hbe_fsk.txt") %>%
   saveTables("ali_b2b_hbe_fsk clean")
 ```
 
+```{r ikba_timecourse}
+ikba_timecourse <- read_tsv("raw tables/ikba_timecourse.txt") %>%
+  quickfactor(condition) %>%
+  quickfactor(treatment) %>%
+  quickfactor(time) %>%
+  rename(
+    log2_tpm = log2tpm, log2_fold = log2fold
+  ) %>%
+  saveTables("ikba_timecourse clean")
+```
+
+
 # ==============================================================================
 
 ```{r build il1b_reg interactive heatmap}
