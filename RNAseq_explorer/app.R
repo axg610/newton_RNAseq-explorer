@@ -21,6 +21,14 @@ library(tidyverse)
 
 ui <- fluidPage(
   
+  tags$head(
+    tags$style(HTML("
+    .selectize-dropdown-content {
+      max-height: 400px !important;
+    }
+  "))
+  ),
+  
   titlePanel("Newton/Giembycz Lab RNAseq Explorer"),
   
   sidebarLayout(
