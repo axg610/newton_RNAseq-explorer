@@ -17,9 +17,6 @@ library(tidyverse)
 # - add experimental details as html in interactive heatmap loader
 
 
-
-
-
 # ==== define ui ====
 
 ui <- fluidPage(
@@ -79,7 +76,8 @@ ui <- fluidPage(
               "BEAS-2B Mom Ind",
               "BEAS-2B Tap Bay Vil",
               "BEAS-2B RNO ONO Vil (GSE267218)",
-              "BEAS-2B RNO Salm (GSE126981)"
+              "BEAS-2B RNO Salm (GSE126981)",
+              "BEAS-2B CRTC-KO Form 2h"
             ),
             "HBE datasets" = c(
               "HBE IL1B IFNg Dex",
@@ -120,7 +118,8 @@ ui <- fluidPage(
             "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse",
             "IL1B-regulated genes: IRF1 KO @ 6 h", 
             "IL1B-regulated genes: IRF1 siRNA @ 6 h",
-            "IL1B-regulated genes: TAK1 KO and rescue @ 2 h"
+            "IL1B-regulated genes: TAK1 KO and rescue @ 2 h",
+            "Form-regulated genes: CRTC KOs @ 2 h"
           )
         ),
         
@@ -139,44 +138,59 @@ ui <- fluidPage(
       helpText(
         HTML(
           '<br/>
-          <a href="https://drive.google.com/drive/folders/1iumRvf95fkqg2FvuGiZunExZcJpQr5lN?usp=sharing" target="_blank"><b>Data repo here</b></a><br/>
-     <a href="https://github.com/axg610/newton_RNAseq-explorer" target="_blank"><b>Code repo here</b></a>
+          <a href="https://drive.google.com/drive/folders/1iumRvf95fkqg2FvuGiZunExZcJpQr5lN?usp=sharing" target="_blank"><b>Data repository</b></a><br/>
+     <a href="https://github.com/axg610/newton_RNAseq-explorer" target="_blank"><b>Code repository</b></a>
           <br/>'
         )
       ),
       
-      helpText(
-        HTML("
-      <b> CHANGELOG </b> <br/>
-      v3.0.2, Aug 6 2026 <br/>
-        - Added IRF1 KO dataset and heatmap <br/>
-        - Added IRF1 siRNA dataset and heatmap <br/>
-        - Added TAK1 KO dataset and heatmap <br/>
-        - Archived transcript-level browsers for room <br/>
-      v3.0.1, May 21 2026 <br/>
-        - Added Ad-IKBA dataset and heatmap <br/>
-      v3.0, May 11 2026 <br/>
-        - Added interactive heatmaps <br/>
-      v2.3a, May 5 2026 <br/>
-        - Added heatmap option to A549 IL1B Bud <br/>
-        - Upgrades to internal heatmap functions <br/>
-      v2.3, May 3 2026 <br/>
-        - Added ALI/HBE/B2B forskolin comparison <br/>
-      v2.2b, April 21 2026 <br/>
-        - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
-        - Set unpublished data to private <br/>
-      v2.2a, February 25 2026 <br/>
-        - Added Radhika's data (GSE267218 and GSE126981) <br/>
-      v2.2, February 7 2026 <br/>
-        - Added experimental heatmap option for basal expression data <br/>
-      v2.1, December 2025 <br/>
-        - Plots now update only when Generate is clicked <br/>
-        - Added transcript-level datasets <br/>
-        - Added log2fold, tpm, and fold options<br/>
-        - Added loading indicator <br/>
-        - Datasets cleaned and consolidated <br/>
-        - Large datasets chunked to avoid OOM crash
-      "
+      wellPanel(
+        tags$details(
+          tags$summary(tags$b("Change log")),
+          HTML(
+            "
+          
+<b>v3.0.2, Aug 6 2026</b><br/>
+  - Added IRF1 KO dataset and heatmap <br/>
+  - Added IRF1 siRNA dataset and heatmap <br/>
+  - Added TAK1 KO dataset and heatmap <br/>
+  - Added CRTC KO dataset and heatmap <br/>
+  - Archived transcript-level browsers for room <br/>
+
+<b>v3.0.1, May 21 2026</b><br/>
+  - Added Ad-IKBA dataset and heatmap <br/>
+
+<b>v3.0, May 11 2026</b><br/>
+  - Added interactive heatmaps <br/>
+
+<b>v2.3a, May 5 2026</b><br/>
+  - Added heatmap option to A549 IL1B Bud <br/>
+  - Upgrades to internal heatmap functions <br/>
+
+<b>v2.3, May 3 2026</b><br/>
+  - Added ALI/HBE/B2B forskolin comparison <br/>
+
+<b>v2.2b, April 21 2026</b><br/>
+  - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
+  - Set unpublished data to private <br/>
+
+<b>v2.2a, February 25 2026</b><br/>
+  - Added Radhika's data (GSE267218 and GSE126981) <br/>
+
+<b>v2.2, February 7 2026</b><br/>
+  - Added experimental heatmap option for basal expression data <br/>
+
+<b>v2.1, December 2025</b><br/>
+  - Plots now update only when Generate is clicked <br/>
+  - Added transcript-level datasets <br/>
+  - Added log2fold, tpm, and fold options <br/>
+  - Added loading indicator <br/>
+  - Datasets cleaned and consolidated <br/>
+  - Large datasets chunked to avoid OOM crash
+
+    "
+            
+          )
         )
       )
     ),
@@ -326,7 +340,8 @@ server <- function(input, output, session) {
     "A549 Ad-IkBa IL1B Bud timecourse"          = "single_gene",
     "A549 IRF1-KO IL1B 6h"                      = "single_gene",
     "A549 IRF1 siRNA IL1B 6h"                   = "single_gene",
-    "A549 TAK1-KO IL1B 2h"                      = "single_gene"
+    "A549 TAK1-KO IL1B 2h"                      = "single_gene",
+    "BEAS-2B CRTC-KO Form 2h"                   = "single_gene"
   )
   
   # dataset file registry
@@ -359,7 +374,8 @@ server <- function(input, output, session) {
     "A549 Ad-IkBa IL1B Bud timecourse"           = "data/ikba_timecourse clean.rds",
     "A549 IRF1-KO IL1B 6h"                       = "data/a549_irf1ko clean.rds",
     "A549 IRF1 siRNA IL1B 6h"                    = "data/a549_irf1_siRNA clean.rds",
-    "A549 TAK1-KO IL1B 2h"                       = "data/a549_tak1ko clean.rds"
+    "A549 TAK1-KO IL1B 2h"                       = "data/a549_tak1ko clean.rds",
+    "BEAS-2B CRTC-KO Form 2h"                    = "data/b2b_crtc_ko clean.rds"
   )
   
   # chunk mappings
@@ -1006,7 +1022,39 @@ server <- function(input, output, session) {
           axis.text.x = element_text(angle = 45, hjust = 1)
         ) +
         labs(x = NULL, y = y_label())  +
-        # scale_fill_manual(values = my_cols) +
+        scale_fill_manual(values = c("grey50", "#FC4E07")) +
+        scale_shape_manual(values = c(21, 24))
+    }
+    else if (state()$dataset == "BEAS-2B CRTC-KO Form 2h"){
+      x() %>%
+        ggplot(
+          aes(
+            x = condition,
+            y = .data[[state()$metric]],
+            fill = treatment,
+            shape = treatment
+          )
+        ) +
+        facet_wrap(~Gene) +
+        geom_boxplot(
+          position = position_dodge(width = 0.7),
+          width = 0.7,
+          outliers = F, 
+          color = "black", 
+          lwd = 0.3
+        ) +
+        geom_point(
+          position = position_dodge(width = 0.7),
+          fill = "white", 
+          color = "black"
+        ) +
+        my_theme +
+        theme(
+          aspect.ratio = 0.75,
+          axis.text.x = element_text(angle = 45, hjust = 1)
+        ) +
+        labs(x = NULL, y = y_label())  +
+        scale_fill_manual(values = c("grey50", "#CC79A7")) +
         scale_shape_manual(values = c(21, 24))
     }
     
@@ -1061,7 +1109,10 @@ server <- function(input, output, session) {
         readRDS("interactive-heatmaps/a549-irf1-siRNA-prelim-heatmap.rds"),
       
       "IL1B-regulated genes: TAK1 KO and rescue @ 2 h" =
-        readRDS("interactive-heatmaps/a549-tak1-ko-prelim-heatmap.rds")
+        readRDS("interactive-heatmaps/a549-tak1-ko-prelim-heatmap.rds"),
+      
+      "Form-regulated genes: CRTC KOs @ 2 h" =
+        readRDS("interactive-heatmaps/b2b-crtc-ko-prelim-heatmap.rds")
       
     )
     
@@ -1087,24 +1138,28 @@ server <- function(input, output, session) {
       
       "IL1B-regulated genes: A549/ALI/HBE @ 6 h" =
         HTML(
-          "Created to aid exploration for the IL1B paper. Row titles indicate which cell types genes are regulated in.
+          "Created to aid exploration for the IL1B paper. Row titles indicate 
+          which cell types genes are regulated in.<br/>
           e.g., A = A549 only, L = ALI only, H = HBE only. ALH = regulated in all
           three celltypes, etc."
         ),
       
       "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse" =
         HTML(
-          "Created to aid exploration for the IL1B paper. 1404 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+          "Created to aid exploration for the IL1B paper. 1404 IL1B-regulated 
+          genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
         ),
       
       "IL1B-regulated genes: IRF1 KO @ 6 h" =
         HTML(
-          "For Amandah's IRF1 work. 2163 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+          "For Amandah's IRF1 work. 2163 IL1B-regulated genes (abs(log2fold) 
+          >= 1, FDR <= 0.05) are shown."
         ),
       
       "IL1B-regulated genes: IRF1 siRNA @ 6 h" =
         HTML(
-          "For Amandah's IRF1 work. 3297 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+          "For Amandah's IRF1 work. 3297 IL1B-regulated genes (abs(log2fold) >=
+          1, FDR <= 0.05) are shown."
         ),
       
       "IL1B-regulated genes: TAK1 KO and rescue @ 2 h" =
@@ -1112,6 +1167,13 @@ server <- function(input, output, session) {
           "For TAK1 paper work. 1303 IL1B-regulated genes (abs(log2fold) >= 1, 
           FDR <= 0.05) under WT, sham, or TAK1KO; +- 48 h of transfection using
           300 ng/cm2 of native TAK1 mRNA or D175 catalytically inactive TAK1 mRNA."
+        ),
+      
+      "Form-regulated genes: CRTC KOs @ 2 h" =
+        HTML(
+          "For Priyanka's CRTC work. 382 Formoterol-regulated genes (fold >= 1.5
+          or fold <= 0.67, and FDR <= 0.05) under CRTC1, CRTC2, CRTC3, or CRTC2+3
+          knockout."
         )
       
     )

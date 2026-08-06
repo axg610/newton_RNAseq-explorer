@@ -461,5 +461,43 @@ a549_tak1ko <- read_tsv("raw tables/a549_tak1ko.txt") %>%
   saveTables("a549_tak1ko clean")
 ```
 
+```{r b2b_crtc_ko}
+b2b_crtc_ko = read_tsv("raw tables/b2b_crtc_ko.txt") %>%
+  quickfactor(condition) %>%
+  quickfactor(treatment) %>%
+  rename(
+    log2_tpm = log2tpm, log2_fold = log2fold
+  ) %>%
+  saveTables("b2b_crtc_ko clean")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
