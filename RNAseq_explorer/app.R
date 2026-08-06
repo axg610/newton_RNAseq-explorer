@@ -5,6 +5,21 @@ library(InteractiveComplexHeatmap)
 library(magick)
 library(tidyverse)
 
+# When adding a new dataset:
+# GENE LOOKUP MODE:
+# - add dataset name to lookup ui
+# - declare data type (single_gene or multiple) in registries
+# - declare data location (data/...) in registries
+# - add plot to MM's monster if-else tree
+# INTERACTIVE HEATMAP MODE:
+# - add dataset name to lookup ui
+# - map name to file location in the interactive heatmap loader
+# - add experimental details as html in interactive heatmap loader
+
+
+
+
+
 # ==== define ui ====
 
 ui <- fluidPage(
@@ -41,10 +56,13 @@ ui <- fluidPage(
             "A549 datasets" = c(
               "A549 IL1B Bud - single gene",
               "A549 IL1B Bud - heatmap",
-              "A549 IL1B Bud (transcripts) - single gene",
+              # "A549 IL1B Bud (transcripts) - single gene",
               "A549 Ad-DUSP1 IL1B",
               "A549 Ad-IkBa IL1B Dex 6h",
-              "A549 Ad-IkBa IL1B Bud timecourse"
+              "A549 Ad-IkBa IL1B Bud timecourse",
+              "A549 IRF1-KO IL1B 6h",
+              "A549 IRF1 siRNA IL1B 6h",
+              "A549 TAK1-KO IL1B 2h"
             ),
             "ALI datasets" = c(
               "ALI IL1B Bud",
@@ -55,9 +73,9 @@ ui <- fluidPage(
             ),
             "BEAS-2B datasets" = c(
               "BEAS-2B AKO/BKO Form Bud",
-              "BEAS-2B AKO/BKO Form Bud (transcripts)",
+              # "BEAS-2B AKO/BKO Form Bud (transcripts)",
               "BEAS-2B dKO Form",
-              "BEAS-2B dKO Form (transcripts)",
+              # "BEAS-2B dKO Form (transcripts)",
               "BEAS-2B Mom Ind",
               "BEAS-2B Tap Bay Vil",
               "BEAS-2B RNO ONO Vil (GSE267218)",
@@ -99,7 +117,10 @@ ui <- fluidPage(
           "Interactive heatmap:",
           choices = c(
             "IL1B-regulated genes: A549/ALI/HBE @ 6 h",
-            "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse"
+            "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse",
+            "IL1B-regulated genes: IRF1 KO @ 6 h", 
+            "IL1B-regulated genes: IRF1 siRNA @ 6 h",
+            "IL1B-regulated genes: TAK1 KO and rescue @ 2 h"
           )
         ),
         
@@ -110,7 +131,7 @@ ui <- fluidPage(
         ),
         
         helpText(
-          HTML("Experimental feature. Heatmaps take ~30 seconds to launch. Button spam and zooming in with your web browser might crash the app.")
+          HTML("Heatmaps may take ~30 seconds to launch.")
         )
       ),
       
@@ -127,6 +148,11 @@ ui <- fluidPage(
       helpText(
         HTML("
       <b> CHANGELOG </b> <br/>
+      v3.0.2, Aug 6 2026 <br/>
+        - Added IRF1 KO dataset and heatmap <br/>
+        - Added IRF1 siRNA dataset and heatmap <br/>
+        - Added TAK1 KO dataset and heatmap <br/>
+        - Archived transcript-level browsers for room <br/>
       v3.0.1, May 21 2026 <br/>
         - Added Ad-IKBA dataset and heatmap <br/>
       v3.0, May 11 2026 <br/>
@@ -274,7 +300,7 @@ server <- function(input, output, session) {
   dataset_meta <- list(
     "A549 IL1B Bud - single gene"               = "single_gene",
     "A549 IL1B Bud - heatmap"                   = "multi_gene",
-    "A549 IL1B Bud (transcripts) - single gene" = "single_gene",
+    # "A549 IL1B Bud (transcripts) - single gene" = "single_gene",
     "HBE IL1B IFNg Dex"                         = "single_gene",
     "HBE TNF Form"                              = "single_gene",
     "ALI IL1B Bud"                              = "single_gene",
@@ -286,9 +312,9 @@ server <- function(input, output, session) {
     "A549 Ad-DUSP1 IL1B"                        = "single_gene",
     "A549 Ad-IkBa IL1B Dex 6h"                  = "single_gene",
     "BEAS-2B AKO/BKO Form Bud"                  = "single_gene",
-    "BEAS-2B AKO/BKO Form Bud (transcripts)"    = "single_gene",
+    # "BEAS-2B AKO/BKO Form Bud (transcripts)"    = "single_gene",
     "BEAS-2B dKO Form"                          = "single_gene",
-    "BEAS-2B dKO Form (transcripts)"            = "single_gene",
+    # "BEAS-2B dKO Form (transcripts)"            = "single_gene",
     "BEAS-2B Tap Bay Vil"                       = "single_gene",
     "HBE CMV timecourse (Parkins Lab)"          = "single_gene",
     "Basal expression - single gene"            = "single_gene",
@@ -297,14 +323,17 @@ server <- function(input, output, session) {
     "BEAS-2B RNO Salm (GSE126981)"              = "single_gene",
     "ALI vs HBE vs BEAS-2B Fsk - single gene"   = "single_gene",
     "ALI vs HBE vs BEAS-2B Fsk - heatmap"       = "multi_gene",
-    "A549 Ad-IkBa IL1B Bud timecourse"          = "single_gene"
+    "A549 Ad-IkBa IL1B Bud timecourse"          = "single_gene",
+    "A549 IRF1-KO IL1B 6h"                      = "single_gene",
+    "A549 IRF1 siRNA IL1B 6h"                   = "single_gene",
+    "A549 TAK1-KO IL1B 2h"                      = "single_gene"
   )
   
   # dataset file registry
   dataset_map <- list(
     "A549 IL1B Bud - single gene"                = "data/a549_ib clean.rds",
     "A549 IL1B Bud - heatmap"                    = "data/a549_ib clean.rds",
-    "A549 IL1B Bud (transcripts) - single gene"  = NULL, # handled via chunks
+    # "A549 IL1B Bud (transcripts) - single gene"  = NULL, # handled via chunks
     "HBE IL1B IFNg Dex"                          = "data/hbe_iid clean.rds",
     "HBE TNF Form"                               = "data/hbe_tf clean.rds",
     "ALI IL1B Bud"                               = "data/ali_ib clean.rds",
@@ -316,9 +345,9 @@ server <- function(input, output, session) {
     "A549 Ad-DUSP1 IL1B"                         = "data/dusp clean.rds",
     "A549 Ad-IkBa IL1B Dex 6h"                   = "data/ikba clean.rds",
     "BEAS-2B AKO/BKO Form Bud"                   = "data/b2b_pka clean.rds",
-    "BEAS-2B AKO/BKO Form Bud (transcripts)"     = NULL, # handled via chunks
+    # "BEAS-2B AKO/BKO Form Bud (transcripts)"     = NULL, # handled via chunks
     "BEAS-2B dKO Form"                           = "data/b2b_dko clean.rds",
-    "BEAS-2B dKO Form (transcripts)"             = NULL, # handled via chunks
+    # "BEAS-2B dKO Form (transcripts)"             = NULL, # handled via chunks
     "BEAS-2B Tap Bay Vil"                        = "data/b2b_tap_bay_vil clean.rds",
     "HBE CMV timecourse (Parkins Lab)"           = "data/hbe_cmv clean.rds",
     "Basal expression - single gene"             = "data/all_cells clean.rds",
@@ -327,7 +356,10 @@ server <- function(input, output, session) {
     "BEAS-2B RNO Salm (GSE126981)"               = "data/b2b_rno_salm clean.rds",
     "ALI vs HBE vs BEAS-2B Fsk - single gene"    = "data/ali_b2b_hbe_fsk clean.rds",
     "ALI vs HBE vs BEAS-2B Fsk - heatmap"        = "data/ali_b2b_hbe_fsk clean.rds",
-    "A549 Ad-IkBa IL1B Bud timecourse"           = "data/ikba_timecourse clean.rds"
+    "A549 Ad-IkBa IL1B Bud timecourse"           = "data/ikba_timecourse clean.rds",
+    "A549 IRF1-KO IL1B 6h"                       = "data/a549_irf1ko clean.rds",
+    "A549 IRF1 siRNA IL1B 6h"                    = "data/a549_irf1_siRNA clean.rds",
+    "A549 TAK1-KO IL1B 2h"                       = "data/a549_tak1ko clean.rds"
   )
   
   # chunk mappings
@@ -904,6 +936,79 @@ server <- function(input, output, session) {
       ) +
         scale_color_manual(values = my_cols, labels = c("NS", "IL1B", "Bud", "IL1B + Bud"))
     }
+    else if (state()$dataset == "A549 IRF1-KO IL1B 6h"){
+      x() %>%
+        ggplot(
+          aes(
+            x = treatment,
+            y = .data[[state()$metric]],
+          )
+        ) +
+        facet_grid(
+          Gene~condition,
+        ) +
+        geom_boxplot(outliers = F, color = "black", lwd = 0.3) +
+        geom_point(shape = 21, fill = "white", color = "black") +
+        my_theme +
+        theme(aspect.ratio = 1.5) +
+        labs(
+          x = NULL,
+          y = y_label()
+        )
+    }
+    else if (state()$dataset == "A549 IRF1 siRNA IL1B 6h"){
+      x() %>%
+        ggplot(
+          aes(
+            x = group, 
+            y = .data[[state()$metric]]
+            ) 
+        ) +
+        facet_wrap(~Gene)+
+        geom_boxplot(outliers = F, color = "black", lwd = 0.3) +
+        geom_point(shape = 21, fill = "white", color = "black") +
+        my_theme +
+        theme(
+          aspect.ratio = 1,
+          axis.text.x = element_text(angle = 45, hjust = 1)
+          ) +
+        labs(
+          x = NULL,
+          y = y_label()
+        )
+    }
+    else if (state()$dataset == "A549 TAK1-KO IL1B 2h"){
+      x() %>%
+        ggplot(
+          aes(
+            x = group,
+            y = .data[[state()$metric]],
+            fill = treatment,
+            shape = treatment
+          )
+        ) +
+        facet_wrap(~Gene) +
+        geom_boxplot(
+          position = position_dodge(width = 0.7),
+          width = 0.7,
+          outliers = F, 
+          color = "black", 
+          lwd = 0.3
+          ) +
+        geom_point(
+          position = position_dodge(width = 0.7),
+          fill = "white", 
+          color = "black"
+          ) +
+        my_theme +
+        theme(
+          aspect.ratio = 0.75,
+          axis.text.x = element_text(angle = 45, hjust = 1)
+        ) +
+        labs(x = NULL, y = y_label())  +
+        # scale_fill_manual(values = my_cols) +
+        scale_shape_manual(values = c(21, 24))
+    }
     
     
     else {output$text = renderPrint("select a valid dataset")} 
@@ -924,7 +1029,7 @@ server <- function(input, output, session) {
     }
     
     else {
-      400
+      500
     }
   }
   )
@@ -947,7 +1052,16 @@ server <- function(input, output, session) {
         readRDS("interactive-heatmaps/a549 ali hbe IL1B reg genes.rds"),
       
       "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse" =
-        readRDS("interactive-heatmaps/a549-ikbadn-ib-timecourse-prelim-heatmap.rds")
+        readRDS("interactive-heatmaps/a549-ikbadn-ib-timecourse-prelim-heatmap.rds"),
+      
+      "IL1B-regulated genes: IRF1 KO @ 6 h" =
+        readRDS("interactive-heatmaps/a549-irf1-ko-prelim-heatmap.rds"),
+      
+      "IL1B-regulated genes: IRF1 siRNA @ 6 h" =
+        readRDS("interactive-heatmaps/a549-irf1-siRNA-prelim-heatmap.rds"),
+      
+      "IL1B-regulated genes: TAK1 KO and rescue @ 2 h" =
+        readRDS("interactive-heatmaps/a549-tak1-ko-prelim-heatmap.rds")
       
     )
     
@@ -981,6 +1095,23 @@ server <- function(input, output, session) {
       "IL1B-regulated genes: naive/Ad-GFP/Ad-IKBA A549 timecourse" =
         HTML(
           "Created to aid exploration for the IL1B paper. 1404 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+        ),
+      
+      "IL1B-regulated genes: IRF1 KO @ 6 h" =
+        HTML(
+          "For Amandah's IRF1 work. 2163 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+        ),
+      
+      "IL1B-regulated genes: IRF1 siRNA @ 6 h" =
+        HTML(
+          "For Amandah's IRF1 work. 3297 IL1B-regulated genes (abs(log2fold) >= 1, FDR <= 0.05) are shown."
+        ),
+      
+      "IL1B-regulated genes: TAK1 KO and rescue @ 2 h" =
+        HTML(
+          "For TAK1 paper work. 1303 IL1B-regulated genes (abs(log2fold) >= 1, 
+          FDR <= 0.05) under WT, sham, or TAK1KO; +- 48 h of transfection using
+          300 ng/cm2 of native TAK1 mRNA or D175 catalytically inactive TAK1 mRNA."
         )
       
     )
