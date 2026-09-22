@@ -1,6 +1,7 @@
 ```{r setup, include=F}
 library(ComplexHeatmap)
 library(InteractiveComplexHeatmap)
+library(ggprism)
 library(tidyverse)
 ```
 
@@ -415,6 +416,22 @@ ali_b2b_hbe_fsk <- read_tsv("raw tables/ali_b2b_hbe_fsk.txt") %>%
   saveTables("ali_b2b_hbe_fsk clean")
 ```
 
+```{r ali_b2b_hbe_form}
+ali_b2b_hbe_form <- read_tsv("raw tables/ali_b2b_hbe_form.txt") %>%
+  mutate(log2_tpm = log2(tpm), .before = fold) %>%
+  select(Gene, celltype, rep, old_rep_name = old_rep, time, treatment, 
+         tpm, fold, log2_tpm, log2_fold = log2fold) %>%
+  # quickfactor(celltype) %>%
+  mutate(celltype = factor(celltype, levels =  c("ALI", "HBE", "B2B"))) %>%
+  quickfactor(treatment) %>%
+  quickfactor(time) %>%
+  mutate(sample = paste0(celltype, "_", treatment, "_", time, "_", rep)) %>%
+  arrange(Gene, celltype, treatment, time) %>%
+  saveTables("ali_b2b_hbe_form clean")
+```
+
+
+
 ```{r ikba_timecourse}
 ikba_timecourse <- read_tsv("raw tables/ikba_timecourse.txt") %>%
   quickfactor(condition) %>%
@@ -472,6 +489,111 @@ b2b_crtc_ko = read_tsv("raw tables/b2b_crtc_ko.txt") %>%
 ```
 
 
+
+
+```{r an extra plot for priyanka, fig.height=4, fig.width=8, dpi=600}
+# for(g in c(
+#   "NR4A1",
+#   "NR4A2",
+#   "NR4A3",
+#   "SIK1",
+#   "IL6",
+#   "IL11",
+#   "RGS2"
+# )){
+#   # Average the 4 reps for each clone
+#   clone_df <- b2b_crtc_ko %>%
+#     filter(Gene == g, treatment == "Form") %>%
+#     group_by(Gene, condition, clone) %>%
+#     summarise(
+#       mean_fold = mean(fold),
+#       .groups = "drop"
+#     )
+#   
+#   # WT average
+#   wt_mean <- clone_df %>%
+#     filter(condition == "WT") %>%
+#     summarise(
+#       WT = mean(mean_fold)
+#     ) %>%
+#     pull(WT)
+#   
+#   # Clone average within each KO
+#   clone_mean_df <- clone_df %>%
+#     filter(condition != "WT") %>%
+#     group_by(Gene, condition) %>%
+#     summarise(
+#       clone_mean = mean(mean_fold),
+#       .groups = "drop"
+#     )
+#   
+#   # Build plotting dataframe
+#   ko_df <- clone_df %>%
+#     filter(condition != "WT") %>%
+#     left_join(
+#       clone_mean_df,
+#       by = c("Gene", "condition")
+#     ) %>%
+#     mutate(WT = wt_mean) %>%
+#     pivot_longer(
+#       cols = c(WT, mean_fold, clone_mean),
+#       names_to = "bar",
+#       values_to = "value"
+#     ) %>%
+#     mutate(
+#       bar = case_when(
+#         bar == "WT" ~ "WT",
+#         bar == "mean_fold" ~ paste0("Clone ", clone),
+#         bar == "clone_mean" ~ "Clone mean"
+#       )
+#     ) %>%
+#     mutate(
+#       bar = factor(
+#         bar,
+#         levels = c(
+#           "WT",
+#           unique(bar[grepl("^Clone [0-9]", bar)]),
+#           "Clone mean"
+#         )
+#       )
+#     ) %>%
+#     select(Gene, condition, bar, value) %>%
+#     distinct()
+#   
+#   # Plot
+#   print(
+#     ggplot(ko_df, aes(x = bar, y = value)) +
+#       geom_col(color = "black") +
+#       facet_wrap(
+#         ~ condition,
+#         scales = "free_x",
+#         nrow = 1,
+#         axes = "all_y"
+#       ) +
+#       labs(
+#         x = NULL,
+#         y = "mean fold",
+#         title = g
+#       ) +
+#       theme_prism() +
+#       theme(
+#         axis.text.x = element_text(
+#           angle = 45,
+#           hjust = 1,
+#           vjust = 1,
+#           margin = margin(t = 2)
+#         ),
+#         axis.ticks = element_line(color = "black"),
+#         aspect.ratio = 1
+#       ) +
+#       scale_y_continuous(
+#         expand = expansion(mult = c(0, 0))
+#       )
+#   )
+#   
+#   ggsave(paste0(g, ".png"), h = 4, w = 8, dpi = 600)
+# }
+```
 
 
 

@@ -5,6 +5,10 @@ library(InteractiveComplexHeatmap)
 library(magick)
 library(tidyverse)
 
+
+# TODO:
+# - fix errorbars on ali_hbe_b2b_form... not showing up online
+
 # When adding a new dataset:
 # GENE LOOKUP MODE:
 # - add dataset name to lookup ui
@@ -96,7 +100,9 @@ ui <- fluidPage(
               "Basal expression - single gene",
               "Basal expression - heatmap",
               "ALI vs HBE vs BEAS-2B Fsk - single gene",
-              "ALI vs HBE vs BEAS-2B Fsk - heatmap"
+              "ALI vs HBE vs BEAS-2B Fsk - heatmap",
+              "ALI vs HBE vs BEAS-2B Form - single gene",
+              "ALI vs HBE vs BEAS-2B Form - heatmap"
             )
           )
         ),
@@ -157,8 +163,11 @@ ui <- fluidPage(
           tags$summary(tags$b("Change log")),
           HTML(
             "
+<b>v3.0.3, September 22 2026</b><br/>
+  - Added single-gene and heatmaps for ALI/HBE/B2B + Form <br/>
+  - Added automatic clustering to single-gene heatmap options <br/>
           
-<b>v3.0.2, Aug 6 2026</b><br/>
+<b>v3.0.2, August 6 2026</b><br/>
   - Added IRF1 KO dataset and heatmap <br/>
   - Added IRF1 siRNA dataset and heatmap <br/>
   - Added TAK1 KO dataset and heatmap <br/>
@@ -345,6 +354,8 @@ server <- function(input, output, session) {
     "BEAS-2B RNO Salm (GSE126981)"              = "single_gene",
     "ALI vs HBE vs BEAS-2B Fsk - single gene"   = "single_gene",
     "ALI vs HBE vs BEAS-2B Fsk - heatmap"       = "multi_gene",
+    "ALI vs HBE vs BEAS-2B Form - single gene"  = "single_gene",
+    "ALI vs HBE vs BEAS-2B Form - heatmap"      = "multi_gene",
     "A549 Ad-IkBa IL1B Bud timecourse"          = "single_gene",
     "A549 IRF1-KO IL1B 6h"                      = "single_gene",
     "A549 IRF1 siRNA IL1B 6h"                   = "single_gene",
@@ -379,6 +390,8 @@ server <- function(input, output, session) {
     "BEAS-2B RNO Salm (GSE126981)"               = "data/b2b_rno_salm clean.rds",
     "ALI vs HBE vs BEAS-2B Fsk - single gene"    = "data/ali_b2b_hbe_fsk clean.rds",
     "ALI vs HBE vs BEAS-2B Fsk - heatmap"        = "data/ali_b2b_hbe_fsk clean.rds",
+    "ALI vs HBE vs BEAS-2B Form - single gene"   = "data/ali_b2b_hbe_form clean.rds",
+    "ALI vs HBE vs BEAS-2B Form - heatmap"       = "data/ali_b2b_hbe_form clean.rds",
     "A549 Ad-IkBa IL1B Bud timecourse"           = "data/ikba_timecourse clean.rds",
     "A549 IRF1-KO IL1B 6h"                       = "data/a549_irf1ko clean.rds",
     "A549 IRF1 siRNA IL1B 6h"                    = "data/a549_irf1_siRNA clean.rds",
@@ -490,7 +503,8 @@ server <- function(input, output, session) {
     
     hm <- Heatmap(
       mat,
-      cluster_rows = F, 
+      cluster_rows = T,
+      clustering_method_rows = "ward.D2",
       cluster_columns = F,
       column_split = colsplit,
       rect_gp = grid::gpar(col = "black", lwd = 0.5),
@@ -671,6 +685,34 @@ server <- function(input, output, session) {
                 "IL1B 1h", "IL1B 2h", "IL1B 6h", "IL1B 12h", "IL1B 24h",
                 "Bud 1h", "Bud 2h", "Bud 6h", "Bud 12h", "Bud 24h",
                 "I+B 1h", "I+B 2h", "I+B 6h", "I+B 12h", "I+B 24h"
+              )
+            )
+          )
+        )
+      }
+      
+      else if (state()$dataset == "ALI vs HBE vs BEAS-2B Form - heatmap"){
+        return(
+          render_heatmap(
+            x(),
+            metric = state()$metric,
+            vertical.scale = 0.5,
+            horizontal.scale = 0.3,
+            colsplit = factor(
+              c(
+                rep("ALI NS 2h", 10), rep("ALI NS 6h", 10),
+                rep("ALI Form 2h", 10), rep("ALI Form 6h", 10),
+                
+                rep("HBE NS 2h", 5), rep("HBE NS 6h", 5),
+                rep("HBE Form 2h", 5), rep("HBE Form 6h", 5),
+                
+                rep("B2B NS 2h", 5), rep("B2B NS 6h", 5),
+                rep("B2B Form 2h", 5), rep("B2B Form 6h", 5)
+              ),
+              levels = c(
+                "ALI NS 2h", "ALI NS 6h", "ALI Form 2h", "ALI Form 6h",
+                "HBE NS 2h", "HBE NS 6h", "HBE Form 2h", "HBE Form 6h",
+                "B2B NS 2h", "B2B NS 6h", "B2B Form 2h", "B2B Form 6h"
               )
             )
           )
@@ -936,6 +978,35 @@ server <- function(input, output, session) {
           caption = "***Note: this figure is a composite of three\nseparate sequencing runs (ALI, HBE, and BEAS-2B)"
         )
     }
+    else if (state()$dataset == "ALI vs HBE vs BEAS-2B Form - single gene"){
+      x() %>%
+        ggplot(aes(x = time, y = .data[[state()$metric]], color = treatment)) +
+        facet_grid(Gene~celltype) +
+        stat_summary(
+          geom = "crossbar", 
+          fun = "mean",
+          position = position_dodge(width = 1)
+          ) +
+        stat_summary(
+          geom = "errorbar", 
+          fun.data = "mean_sdl",
+          fun.args = list(mult = 1),
+          width = 0.3,
+          position = position_dodge(width = 1)
+        ) +
+        geom_point(
+          shape = 21, 
+          fill = "white",
+          position = position_dodge(width = 1)
+        ) +
+        scale_color_manual(values = my_cols) +
+        my_theme +
+        theme(aspect.ratio = 2) +
+        labs(
+          x = NULL, y = y_label(), 
+          caption = "***Note: this figure is a composite of three\nseparate sequencing runs (ALI, HBE, and BEAS-2B)"
+        )
+    }
     else if (state()$dataset == "A549 Ad-IkBa IL1B Bud timecourse"){
       x() %>%
         ggplot(
@@ -1065,7 +1136,6 @@ server <- function(input, output, session) {
         scale_fill_manual(values = c("grey50", "#CC79A7")) +
         scale_shape_manual(values = c(21, 24))
     }
-    
     
     else {output$text = renderPrint("select a valid dataset")} 
   }, 
