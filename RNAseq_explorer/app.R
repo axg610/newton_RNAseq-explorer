@@ -7,7 +7,6 @@ library(tidyverse)
 
 
 # TODO:
-# - fix errorbars on ali_hbe_b2b_form... not showing up online
 
 # When adding a new dataset:
 # GENE LOOKUP MODE:
@@ -162,51 +161,10 @@ ui <- fluidPage(
         tags$details(
           tags$summary(tags$b("Change log")),
           HTML(
-            "
-<b>v3.0.3, September 22 2026</b><br/>
-  - Added single-gene and heatmaps for ALI/HBE/B2B + Form <br/>
-  - Added automatic clustering to single-gene heatmap options <br/>
-          
-<b>v3.0.2, August 6 2026</b><br/>
-  - Added IRF1 KO dataset and heatmap <br/>
-  - Added IRF1 siRNA dataset and heatmap <br/>
-  - Added TAK1 KO dataset and heatmap <br/>
-  - Added CRTC KO dataset and heatmap <br/>
-  - Archived transcript-level browsers for room <br/>
-
-<b>v3.0.1, May 21 2026</b><br/>
-  - Added Ad-IKBA dataset and heatmap <br/>
-
-<b>v3.0, May 11 2026</b><br/>
-  - Added interactive heatmaps <br/>
-
-<b>v2.3a, May 5 2026</b><br/>
-  - Added heatmap option to A549 IL1B Bud <br/>
-  - Upgrades to internal heatmap functions <br/>
-
-<b>v2.3, May 3 2026</b><br/>
-  - Added ALI/HBE/B2B forskolin comparison <br/>
-
-<b>v2.2b, April 21 2026</b><br/>
-  - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
-  - Set unpublished data to private <br/>
-
-<b>v2.2a, February 25 2026</b><br/>
-  - Added Radhika's data (GSE267218 and GSE126981) <br/>
-
-<b>v2.2, February 7 2026</b><br/>
-  - Added experimental heatmap option for basal expression data <br/>
-
-<b>v2.1, December 2025</b><br/>
-  - Plots now update only when Generate is clicked <br/>
-  - Added transcript-level datasets <br/>
-  - Added log2fold, tpm, and fold options <br/>
-  - Added loading indicator <br/>
-  - Datasets cleaned and consolidated <br/>
-  - Large datasets chunked to avoid OOM crash
-
-    "
-            
+            paste(
+              readLines("changelog.txt", warn = FALSE),
+              collapse = "\n"
+            )
           )
         )
       )
@@ -455,7 +413,7 @@ server <- function(input, output, session) {
     metric, 
     vertical.scale = 1,
     horizontal.scale = 1
-    ) {
+  ) {
     
     mat <- dat %>% 
       select("Gene", "sample", metric) %>%
@@ -986,11 +944,10 @@ server <- function(input, output, session) {
           geom = "crossbar", 
           fun = "mean",
           position = position_dodge(width = 1)
-          ) +
+        ) +
         stat_summary(
           geom = "errorbar", 
-          fun.data = "mean_sdl",
-          fun.args = list(mult = 1),
+          fun.data = "mean_se",
           width = 0.3,
           position = position_dodge(width = 1)
         ) +
@@ -1025,10 +982,10 @@ server <- function(input, output, session) {
         stat_summary(geom = "errorbar", fun.data = "mean_se", width = 0.2) +
         my_theme +
         theme(aspect.ratio = 1.5) +
-      labs(
-        x = "time (h)",
-        y = y_label()
-      ) +
+        labs(
+          x = "time (h)",
+          y = y_label()
+        ) +
         scale_color_manual(values = my_cols, labels = c("NS", "IL1B", "Bud", "IL1B + Bud"))
     }
     else if (state()$dataset == "A549 IRF1-KO IL1B 6h"){
@@ -1057,7 +1014,7 @@ server <- function(input, output, session) {
           aes(
             x = group, 
             y = .data[[state()$metric]]
-            ) 
+          ) 
         ) +
         facet_wrap(~Gene)+
         geom_boxplot(outliers = F, color = "black", lwd = 0.3) +
@@ -1066,7 +1023,7 @@ server <- function(input, output, session) {
         theme(
           aspect.ratio = 1,
           axis.text.x = element_text(angle = 45, hjust = 1)
-          ) +
+        ) +
         labs(
           x = NULL,
           y = y_label()
@@ -1089,12 +1046,12 @@ server <- function(input, output, session) {
           outliers = F, 
           color = "black", 
           lwd = 0.3
-          ) +
+        ) +
         geom_point(
           position = position_dodge(width = 0.7),
           fill = "white", 
           color = "black"
-          ) +
+        ) +
         my_theme +
         theme(
           aspect.ratio = 0.75,
@@ -1194,7 +1151,62 @@ server <- function(input, output, session) {
       
     )
     
-    ht <- draw(hm)
+    
+    
+    
+    
+    
+    # we need to reskin the heatmap with better color palettes since people
+    # complain the range around log2fold=0 is too exaggerated.
+    
+    source("generic_l2f_heatmap_colors.R")
+    
+    # determine whether hm is a HeatmapList or a standalone Heatmap
+    if (methods::is(hm, "HeatmapList")) {
+      
+      # Use the first heatmap in the list
+      heatmap_idx <- 1
+      hm_single <- hm@ht_list[[heatmap_idx]]
+      
+      # Recover the matrix
+      mat <- hm_single@matrix
+      
+      # Generate new colors
+      hm_colors <- generic_l2f_heatmap_colors(
+        mat,
+        scaleType = "symmetric",
+        clipFactor = 0.99
+      )
+      
+      # Replace the existing color mapping
+      hm_single@matrix_color_mapping <-
+        ComplexHeatmap::ColorMapping(col_fun = hm_colors)
+      
+      # Put the updated heatmap back into the list
+      hm@ht_list[[heatmap_idx]] <- hm_single
+      
+    } else if (methods::is(hm, "Heatmap")) {
+      
+      # Recover the matrix
+      mat <- hm@matrix
+      
+      # Generate new colors
+      hm_colors <- generic_l2f_heatmap_colors(
+        mat,
+        scaleType = "symmetric",
+        clipFactor = 0.99
+      )
+      
+      # Replace the existing color mapping
+      hm@matrix_color_mapping <-
+        ComplexHeatmap::ColorMapping(col_fun = hm_colors)
+      
+    } else {
+      stop("hm must be a ComplexHeatmap Heatmap or HeatmapList object.")
+    }
+    
+    # Draw
+    ht <- ComplexHeatmap::draw(hm)
     
     makeInteractiveComplexHeatmap(
       input,
@@ -1202,6 +1214,21 @@ server <- function(input, output, session) {
       session,
       ht
     )
+    
+    makeInteractiveComplexHeatmap(
+      input,
+      output,
+      session,
+      ht
+    )
+    
+    
+    
+    
+    
+    
+    
+    
   }
   )
   

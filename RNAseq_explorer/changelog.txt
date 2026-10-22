@@ -1,0 +1,50 @@
+
+
+<b>v3.0.4, October 22 2026</b><br/>
+
+  - Changed interactive heatmap colors to a symmetric, linear gradient
+  running from quantile 0.1 to 0.99 of the log2fold matrix, centered around
+  log2fold=0.  <br/>
+  - Fixed error bars on ALI/HBE/B2B + Form <br/>
+
+<b>v3.0.3, September 22 2026</b><br/>
+  - Added single-gene and heatmaps for ALI/HBE/B2B + Form <br/>
+  - Added automatic clustering to single-gene heatmap options <br/>
+
+<b>v3.0.2, August 6 2026</b><br/>
+  - Added IRF1 KO dataset and heatmap <br/>
+  - Added IRF1 siRNA dataset and heatmap <br/>
+  - Added TAK1 KO dataset and heatmap <br/>
+  - Added CRTC KO dataset and heatmap <br/>
+  - Archived transcript-level browsers for room <br/>
+
+<b>v3.0.1, May 21 2026</b><br/>
+  - Added Ad-IKBA dataset and heatmap <br/>
+
+<b>v3.0, May 11 2026</b><br/>
+  - Added interactive heatmaps <br/>
+
+<b>v2.3a, May 5 2026</b><br/>
+  - Added heatmap option to A549 IL1B Bud <br/>
+  - Upgrades to internal heatmap functions <br/>
+
+<b>v2.3, May 3 2026</b><br/>
+  - Added ALI/HBE/B2B forskolin comparison <br/>
+
+<b>v2.2b, April 21 2026</b><br/>
+  - Synonym genes no longer break search (search SIK1 on HBE TNF Form) <br/>
+  - Set unpublished data to private <br/>
+
+<b>v2.2a, February 25 2026</b><br/>
+  - Added Radhika's data (GSE267218 and GSE126981) <br/>
+
+<b>v2.2, February 7 2026</b><br/>
+  - Added experimental heatmap option for basal expression data <br/>
+
+<b>v2.1, December 2025</b><br/>
+  - Plots now update only when Generate is clicked <br/>
+  - Added transcript-level datasets <br/>
+  - Added log2fold, tpm, and fold options <br/>
+  - Added loading indicator <br/>
+  - Datasets cleaned and consolidated <br/>
+  - Large datasets chunked to avoid OOM crash
