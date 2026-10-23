@@ -5,9 +5,6 @@ library(InteractiveComplexHeatmap)
 library(magick)
 library(tidyverse)
 
-
-# TODO:
-
 # When adding a new dataset:
 # GENE LOOKUP MODE:
 # - add dataset name to lookup ui
@@ -18,6 +15,7 @@ library(tidyverse)
 # - add dataset name to lookup ui
 # - map name to file location in the interactive heatmap loader
 # - add experimental details as html in interactive heatmap loader
+# - !!! interactive heatmaps should be pre-baked into an rds on a log2 scale
 
 
 # ==== define ui ====
@@ -119,6 +117,8 @@ ui <- fluidPage(
         
       ),
       
+      
+      
       # boot interactive heatmaps ui
       conditionalPanel(
         condition = "input.app_mode == 'interactive'",
@@ -136,15 +136,29 @@ ui <- fluidPage(
           )
         ),
         
+        radioButtons(
+          "heatmap_metric",
+          "Heatmap metric:",
+          choices = c("log2_fold", "fold"),
+          selected = "log2_fold"
+        ),
+        
+        numericInput(
+          "heatmap_clip_factor_num",
+          "Color clipping (0-100%):",
+          min = 0,
+          max = 100,
+          value = 99,
+          step = 0.25,
+          width = "100%"
+        ),
+        
         actionButton(
           "launch_heatmap",
           "Launch interactive heatmap",
           icon = icon("th")
-        ),
-        
-        helpText(
-          HTML("Heatmaps may take ~30 seconds to launch.")
         )
+        
       ),
       
       # static helptext
@@ -159,7 +173,7 @@ ui <- fluidPage(
       
       wellPanel(
         tags$details(
-          tags$summary(tags$b("Change log")),
+          tags$summary(tags$b("[!!!] Change log")),
           HTML(
             paste(
               readLines("changelog.txt", warn = FALSE),
@@ -200,6 +214,7 @@ ui <- fluidPage(
       # ==== interactive heatmap mode ====
       
       # should get a spinner working here
+      
       conditionalPanel(
         condition = "input.app_mode == 'interactive'",
         
@@ -492,10 +507,10 @@ server <- function(input, output, session) {
     }
     
     list(
-      dataset = input$dataset,
-      genes   = genes,
-      metric  = input$metric,
-      type    = type
+      dataset        = input$dataset,
+      genes          = genes,
+      metric         = input$metric,
+      type           = type
     )
   })
   
@@ -1152,60 +1167,71 @@ server <- function(input, output, session) {
     )
     
     
-    
-    
-    
-    
-    # we need to reskin the heatmap with better color palettes since people
-    # complain the range around log2fold=0 is too exaggerated.
-    
     source("generic_l2f_heatmap_colors.R")
     
-    # determine whether hm is a HeatmapList or a standalone Heatmap
-    if (methods::is(hm, "HeatmapList")) {
-      
-      # Use the first heatmap in the list
-      heatmap_idx <- 1
-      hm_single <- hm@ht_list[[heatmap_idx]]
-      
-      # Recover the matrix
-      mat <- hm_single@matrix
-      
-      # Generate new colors
-      hm_colors <- generic_l2f_heatmap_colors(
-        mat,
-        scaleType = "symmetric",
-        clipFactor = 0.99
+    validate(
+      need(
+        !is.null(input$heatmap_clip_factor_num) && 
+          is.finite(input$heatmap_clip_factor_num) &&
+          input$heatmap_clip_factor_num >= 0 && 
+          input$heatmap_clip_factor_num <= 100,
+        "Invalid color clipping value: please enter a number between 0 and 100."
       )
+    )
+
+    # normalize heatmaplists to single heatmaps if needed ======================
+    
+    if (methods::is(hm, "HeatmapList")){
       
-      # Replace the existing color mapping
-      hm_single@matrix_color_mapping <-
-        ComplexHeatmap::ColorMapping(col_fun = hm_colors)
+      hm = hm@ht_list[[1]]
       
-      # Put the updated heatmap back into the list
-      hm@ht_list[[heatmap_idx]] <- hm_single
+    } else if (methods::is(hm, "Heatmap")){
       
-    } else if (methods::is(hm, "Heatmap")) {
-      
-      # Recover the matrix
-      mat <- hm@matrix
-      
-      # Generate new colors
-      hm_colors <- generic_l2f_heatmap_colors(
-        mat,
-        scaleType = "symmetric",
-        clipFactor = 0.99
-      )
-      
-      # Replace the existing color mapping
-      hm@matrix_color_mapping <-
-        ComplexHeatmap::ColorMapping(col_fun = hm_colors)
-      
-    } else {
-      stop("hm must be a ComplexHeatmap Heatmap or HeatmapList object.")
+      hm = hm
     }
     
-    # Draw
+    
+    # recover the matrix =======================================================
+    
+    if (input$heatmap_metric == "log2_fold"){
+      
+      mat = hm@matrix
+      
+    } else if (input$heatmap_metric == "fold"){
+      
+      mat = 2^(hm@matrix)
+      
+    }
+    
+    # apply consistent coloring ================================================
+    
+    if (input$heatmap_metric == "log2_fold"){
+      
+      hm_colors <- generic_l2f_heatmap_colors(
+        mat,
+        colorscale = c(
+          "steelblue4", "steelblue2", "white", "firebrick2", "firebrick4"
+        ),
+        scaleType = "symmetric",
+        clipFactor = input$heatmap_clip_factor_num/100
+      )
+      
+    } else if (input$heatmap_metric == "fold"){
+      
+      hm_colors <- generic_l2f_heatmap_colors(
+        mat,
+        colorscale = c(
+          "white", "firebrick2", "firebrick4"
+        ),
+        scaleType = "one-sided",
+        clipFactor = input$heatmap_clip_factor_num/100
+      )
+      
+    }
+    
+    hm@matrix_color_mapping <- ComplexHeatmap::ColorMapping(col_fun = hm_colors)
+    
+    # draw
     ht <- ComplexHeatmap::draw(hm)
     
     makeInteractiveComplexHeatmap(

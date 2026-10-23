@@ -1,5 +1,9 @@
 
+<b>v3.0.4a, October 23 2026</b><br/>
 
+  - Interactive heatmaps now support linear and log2 scales <br/>
+  - Interactive heatmaps now accept custom clipping factors <br/>
+  
 <b>v3.0.4, October 22 2026</b><br/>
 
   - Changed interactive heatmap colors to a symmetric, linear gradient
